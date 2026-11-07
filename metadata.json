@@ -1,0 +1,6 @@
+{
+  "name": "MT5 QuantBot - Gold & Crypto Automated Trading Terminal",
+  "description": "MetaTrader 5 style automated trading bot for Gold (XAU/USD) and Cryptocurrencies with real-time technical analysis, signal dashboard, and manual risk controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
