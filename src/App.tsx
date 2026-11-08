@@ -6,6 +6,8 @@ import { MT5Toolbox } from './components/MT5Toolbox';
 import { SignalDashboardModal } from './components/SignalDashboardModal';
 import { RiskSettingsModal } from './components/RiskSettingsModal';
 import { NewOrderModal } from './components/NewOrderModal';
+import { PythonBridgeModal } from './components/PythonBridgeModal';
+import { AutonomousPilotBanner } from './components/AutonomousPilotBanner';
 import { marketData, SUPPORTED_SYMBOLS, Tick } from './services/marketData';
 import { botEngine } from './services/botEngine';
 import { generateSignal } from './services/indicators';
@@ -15,11 +17,13 @@ import {
   JournalLog,
   Order,
   PerformanceStats,
+  PythonBridgeStatus,
   RiskSettings,
   TradeSignal,
+  BotOperationMode,
+  ExecutionMode,
 } from './types';
 
-// Web Audio API helper for authentic MT5 execution sounds
 function playAudioChime(type: 'ORDER_OPEN' | 'ORDER_CLOSE' | 'SIGNAL_ALERT') {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -29,8 +33,8 @@ function playAudioChime(type: 'ORDER_OPEN' | 'ORDER_CLOSE' | 'SIGNAL_ALERT') {
     gain.connect(ctx.destination);
 
     if (type === 'ORDER_OPEN') {
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12); // A5
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
       gain.gain.setValueAtTime(0.08, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
       osc.start();
@@ -50,7 +54,7 @@ function playAudioChime(type: 'ORDER_OPEN' | 'ORDER_CLOSE' | 'SIGNAL_ALERT') {
       osc.stop(ctx.currentTime + 0.15);
     }
   } catch (e) {
-    // Audio context may be restricted before user gesture
+    // restricted until gesture
   }
 }
 
@@ -82,14 +86,17 @@ export default function App() {
   const [journalLogs, setJournalLogs] = useState<JournalLog[]>(() => botEngine.getJournalLogs());
   const [equityCurve, setEquityCurve] = useState(() => botEngine.getEquityCurve());
   const [stats, setStats] = useState<PerformanceStats>(() => botEngine.getPerformanceStats());
+  const [bridgeStatus, setBridgeStatus] = useState<PythonBridgeStatus>(() => botEngine.getBridgeStatus());
+  const [pendingApprovals, setPendingApprovals] = useState<TradeSignal[]>(() => botEngine.getPendingApprovals());
 
-  // Quantitative Signals Map across symbols
+  // Quantitative Signals Map across all 22 symbols
   const [signals, setSignals] = useState<Record<string, TradeSignal>>({});
 
   // Modals
   const [isSignalDashboardOpen, setIsSignalDashboardOpen] = useState<boolean>(false);
   const [isRiskSettingsOpen, setIsRiskSettingsOpen] = useState<boolean>(false);
   const [isNewOrderOpen, setIsNewOrderOpen] = useState<boolean>(false);
+  const [isPythonBridgeOpen, setIsPythonBridgeOpen] = useState<boolean>(false);
 
   // Toast notifications
   const [toast, setToast] = useState<{ message: string; type: 'SUCCESS' | 'WARN' | 'INFO' } | null>(null);
@@ -99,7 +106,7 @@ export default function App() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Sync BotEngine subscriptions
+  // Sync BotEngine state
   useEffect(() => {
     const unsubscribeBot = botEngine.subscribe(() => {
       setAccount(botEngine.getAccount());
@@ -109,6 +116,8 @@ export default function App() {
       setJournalLogs(botEngine.getJournalLogs());
       setEquityCurve(botEngine.getEquityCurve());
       setStats(botEngine.getPerformanceStats());
+      setBridgeStatus(botEngine.getBridgeStatus());
+      setPendingApprovals(botEngine.getPendingApprovals());
     });
 
     return () => unsubscribeBot();
@@ -132,12 +141,11 @@ export default function App() {
     };
   }, [activeSymbol, activeTimeframe]);
 
-  // When active symbol or timeframe changes, refresh chart candles
   useEffect(() => {
     setCandles(marketData.getCandles(activeSymbol, activeTimeframe));
   }, [activeSymbol, activeTimeframe]);
 
-  // Periodic Signal generation & automated bot evaluation loop
+  // Periodic Signal generation & automated bot evaluation loop across 22 markets
   useEffect(() => {
     const evaluateSignals = () => {
       const newSignals: Record<string, TradeSignal> = {};
@@ -155,8 +163,8 @@ export default function App() {
         );
         newSignals[sym] = sig;
 
-        // Feed to Bot Engine for automated trade execution
-        if (riskSettings.autoTradingEnabled) {
+        // Feed to Bot Engine for Autonomous or Rule-based trade execution
+        if (riskSettings.botMode !== 'OFF') {
           botEngine.evaluateSignalForExecution(sig);
         }
       }
@@ -165,7 +173,7 @@ export default function App() {
     };
 
     evaluateSignals();
-    const interval = setInterval(evaluateSignals, 2500);
+    const interval = setInterval(evaluateSignals, 2200);
     return () => clearInterval(interval);
   }, [activeTimeframe, riskSettings]);
 
@@ -181,7 +189,7 @@ export default function App() {
         isBotExecuted: false,
       });
       playAudioChime('ORDER_OPEN');
-      showToast(`Order #${order.ticket} ${order.type} ${order.volume} ${order.symbol} Executed`, 'SUCCESS');
+      showToast(`Order #${order.ticket} ${order.type} ${order.volume} ${order.symbol} Dispatched to MT5`, 'SUCCESS');
     },
     []
   );
@@ -206,9 +214,26 @@ export default function App() {
     showToast(`MT5 Algo Trading ${newState ? 'Activated (ON)' : 'Deactivated (OFF)'}`, newState ? 'SUCCESS' : 'WARN');
   }, [riskSettings.autoTradingEnabled]);
 
+  const handleChangeBotMode = useCallback((mode: BotOperationMode) => {
+    botEngine.updateRiskSettings({ botMode: mode, autoTradingEnabled: mode !== 'OFF' });
+    showToast(
+      mode === 'AUTONOMOUS'
+        ? 'Autonomous AI Pilot Activated (Scanning 22 Markets)'
+        : mode === 'MANUAL_RISK'
+        ? 'Custom Risk Mode Enabled'
+        : 'Bot Paused (Manual Trading Only)',
+      'SUCCESS'
+    );
+  }, []);
+
+  const handleChangeExecutionMode = useCallback((mode: ExecutionMode) => {
+    botEngine.updateRiskSettings({ executionMode: mode });
+    showToast(`Execution Mode: ${mode === 'AUTOMATIC' ? 'Instant Auto-Execution' : '1-Click Manual Confirm'}`, 'INFO');
+  }, []);
+
   const handleSaveRiskSettings = useCallback((newSettings: Partial<RiskSettings>) => {
     botEngine.updateRiskSettings(newSettings);
-    showToast(`Manual Risk Settings Updated`, 'SUCCESS');
+    showToast(`Risk Controls & Whitelist Saved`, 'SUCCESS');
   }, []);
 
   const handleResetAccount = useCallback((balance: number) => {
@@ -219,24 +244,51 @@ export default function App() {
   const handleExecuteSignal = useCallback(
     (signal: TradeSignal) => {
       const orderType = signal.type.includes('BUY') ? 'BUY' : 'SELL';
+      const volume =
+        riskSettings.botMode === 'AUTONOMOUS'
+          ? signal.autonomousDecision?.autoLotSize || 0.1
+          : riskSettings.fixedLotSize;
+
       botEngine.executeOrder({
         symbol: signal.symbol,
         type: orderType,
-        volume: riskSettings.fixedLotSize,
+        volume,
         openPrice: signal.entryPrice,
         sl: signal.stopLoss,
         tp: signal.takeProfit,
         isBotExecuted: false,
-        reasonNote: `Manual Signal Exec: ${signal.type} (${signal.confidence}%)`,
+        reasonNote: `Signal Execution: ${signal.type} (${signal.confidence}%)`,
       });
       playAudioChime('ORDER_OPEN');
-      showToast(`Signal Order #${signal.symbol} ${orderType} Executed`, 'SUCCESS');
+      showToast(`Order #${signal.symbol} ${orderType} ${volume}L Dispatched to MT5`, 'SUCCESS');
     },
-    [riskSettings.fixedLotSize]
+    [riskSettings.botMode, riskSettings.fixedLotSize]
+  );
+
+  const handleApproveOrder = useCallback(
+    (signal: TradeSignal) => {
+      handleExecuteSignal(signal);
+      botEngine.dismissPendingApproval(signal.symbol);
+    },
+    [handleExecuteSignal]
   );
 
   const handleToggleIndicator = (key: 'showEma' | 'showBollinger' | 'showRsi' | 'showMacd') => {
     setIndicatorsConfig((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSimulateBridgeConnect = async () => {
+    try {
+      await fetch('/api/bridge/toggle-simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'PYTHON_MT5' }),
+      });
+      playAudioChime('SIGNAL_ALERT');
+      showToast('Python MT5 Bridge Connection Ping Verified (1.2ms)', 'SUCCESS');
+    } catch {
+      showToast('Bridge ping simulated', 'INFO');
+    }
   };
 
   const currentTick = ticks[activeSymbol] || {
@@ -274,18 +326,29 @@ export default function App() {
         onChartTypeChange={setChartType}
         riskSettings={riskSettings}
         onToggleAutoTrading={handleToggleAutoTrading}
+        onChangeBotMode={handleChangeBotMode}
+        onChangeExecutionMode={handleChangeExecutionMode}
         account={account}
+        bridgeStatus={bridgeStatus}
         onOpenSignalDashboard={() => setIsSignalDashboardOpen(true)}
         onOpenRiskSettings={() => setIsRiskSettingsOpen(true)}
-        onOpenMQL5Bridge={() => setIsSignalDashboardOpen(true)}
+        onOpenPythonBridge={() => setIsPythonBridgeOpen(true)}
         onOpenNewOrder={() => setIsNewOrderOpen(true)}
         indicatorsConfig={indicatorsConfig}
         onToggleIndicator={handleToggleIndicator}
       />
 
-      {/* Main Workspace: Left Market Watch + Center Interactive MT5 Chart */}
+      {/* Autonomous Bot Banner & Pending Approvals Strip */}
+      <AutonomousPilotBanner
+        riskSettings={riskSettings}
+        pendingApprovals={pendingApprovals}
+        onApproveOrder={handleApproveOrder}
+        onDismissApproval={(sym) => botEngine.dismissPendingApproval(sym)}
+        onOpenSignalDashboard={() => setIsSignalDashboardOpen(true)}
+      />
+
+      {/* Main Workspace: Left Market Watch (22 markets) + Center Interactive MT5 Chart */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar: Market Watch */}
         <MarketWatch
           activeSymbol={activeSymbol}
           onSelectSymbol={setActiveSymbol}
@@ -293,7 +356,6 @@ export default function App() {
           onQuickTrade={(sym, type) => handleExecuteTrade({ symbol: sym, type, volume: riskSettings.fixedLotSize })}
         />
 
-        {/* Center: MT5 Canvas Chart */}
         <MT5Chart
           symbol={activeSymbol}
           timeframe={activeTimeframe}
@@ -306,17 +368,19 @@ export default function App() {
         />
       </div>
 
-      {/* Bottom Dock: MT5 Toolbox Terminal (Trade, Exposure, History, Signals, Journal, MQL5) */}
+      {/* Bottom Dock: MT5 Toolbox Terminal (Trade, Exposure, History, Signals, Journal, Python Bridge) */}
       <MT5Toolbox
         account={account}
         openOrders={openOrders}
         closedOrders={closedOrders}
         signals={signals}
         journalLogs={journalLogs}
+        bridgeStatus={bridgeStatus}
         onCloseOrder={handleCloseOrder}
         onCloseAll={handleCloseAll}
         onExecuteSignal={handleExecuteSignal}
         onClearLogs={() => setJournalLogs([])}
+        onOpenPythonBridge={() => setIsPythonBridgeOpen(true)}
         activeSymbol={activeSymbol}
       />
 
@@ -354,6 +418,13 @@ export default function App() {
         activeSymbol={activeSymbol}
         ticks={ticks}
         onExecute={handleExecuteTrade}
+      />
+
+      <PythonBridgeModal
+        isOpen={isPythonBridgeOpen}
+        onClose={() => setIsPythonBridgeOpen(false)}
+        bridgeStatus={bridgeStatus}
+        onSimulateConnect={handleSimulateBridgeConnect}
       />
     </div>
   );

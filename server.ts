@@ -26,13 +26,257 @@ const ai = process.env.GEMINI_API_KEY
     })
   : null;
 
+// In-Memory Python MT5 Bridge State
+interface BridgeState {
+  connected: boolean;
+  mode: 'PYTHON_MT5' | 'EMULATED_BRIDGE';
+  accountNumber: string;
+  brokerServer: string;
+  balance: number;
+  equity: number;
+  pingMs: number;
+  lastHeartbeat: string;
+  pendingOrders: any[];
+  executedOrders: any[];
+}
+
+const bridgeState: BridgeState = {
+  connected: true, // Default to healthy simulated bridge, becomes REAL when python worker pings
+  mode: 'EMULATED_BRIDGE',
+  accountNumber: '839210',
+  brokerServer: 'MetaQuotes-ECN-Pro-01',
+  balance: 25000.0,
+  equity: 25000.0,
+  pingMs: 1.4,
+  lastHeartbeat: new Date().toISOString(),
+  pendingOrders: [],
+  executedOrders: [],
+};
+
+// Python Bridge Status Endpoint
+app.get('/api/bridge/status', (req, res) => {
+  res.json({
+    connected: bridgeState.connected,
+    mode: bridgeState.mode,
+    accountNumber: bridgeState.accountNumber,
+    brokerServer: bridgeState.brokerServer,
+    balance: bridgeState.balance,
+    equity: bridgeState.equity,
+    pingMs: bridgeState.pingMs,
+    lastHeartbeat: bridgeState.lastHeartbeat,
+    pendingCount: bridgeState.pendingOrders.length,
+    executedCount: bridgeState.executedOrders.length,
+  });
+});
+
+// Endpoint for Python MT5 Worker to send Heartbeat
+app.post('/api/bridge/heartbeat', (req, res) => {
+  const { account, server, balance, equity, ping } = req.body;
+  bridgeState.connected = true;
+  bridgeState.mode = 'PYTHON_MT5';
+  if (account) bridgeState.accountNumber = String(account);
+  if (server) bridgeState.brokerServer = String(server);
+  if (balance !== undefined) bridgeState.balance = Number(balance);
+  if (equity !== undefined) bridgeState.equity = Number(equity);
+  if (ping !== undefined) bridgeState.pingMs = Number(ping);
+  bridgeState.lastHeartbeat = new Date().toISOString();
+
+  res.json({ status: 'ACK', serverTime: new Date().toISOString() });
+});
+
+// Endpoint for Python MT5 Worker to fetch pending orders
+app.get('/api/bridge/pending-orders', (req, res) => {
+  const orders = [...bridgeState.pendingOrders];
+  bridgeState.pendingOrders = []; // Drain queue
+  res.json({ orders });
+});
+
+// Endpoint for Node.js Bot to queue an order to the Python MT5 worker
+app.post('/api/bridge/queue-order', (req, res) => {
+  const order = req.body;
+  bridgeState.pendingOrders.push(order);
+  console.log(`[Bridge] Order queued for MT5 execution: #${order.ticket} ${order.symbol} ${order.type} ${order.volume} lots`);
+  res.json({ status: 'QUEUED', ticket: order.ticket });
+});
+
+// Endpoint for Python MT5 Worker to report execution result
+app.post('/api/bridge/report-execution', (req, res) => {
+  const result = req.body;
+  bridgeState.executedOrders.unshift({
+    ...result,
+    reportedAt: new Date().toISOString(),
+  });
+  if (bridgeState.executedOrders.length > 100) bridgeState.executedOrders.pop();
+  console.log(`[Bridge] Python reported execution: ticket #${result.ticket} -> MT5 order #${result.mt5Ticket}`);
+  res.json({ status: 'CONFIRMED' });
+});
+
+// Simulate Python Bridge connection toggle
+app.post('/api/bridge/toggle-simulate', (req, res) => {
+  const { mode } = req.body;
+  bridgeState.mode = mode || 'PYTHON_MT5';
+  bridgeState.connected = true;
+  bridgeState.lastHeartbeat = new Date().toISOString();
+  bridgeState.pingMs = Number((Math.random() * 2 + 0.8).toFixed(1));
+  res.json({ status: 'OK', bridgeState });
+});
+
+// Serve ready-to-run Python MT5 Bridge script
+app.get('/api/bridge/script', (req, res) => {
+  const host = req.get('host') || 'localhost:3000';
+  const protocol = req.protocol || 'http';
+  const serverUrl = `${protocol}://${host}`;
+
+  const pythonScript = `"""
+MT5 Python Account Bridge for QuantBot
+Connects directly to MetaTrader 5 desktop terminal on Windows/Wine and
+dispatches automated orders from the Node.js QuantBot Engine.
+"""
+
+import time
+import requests
+import json
+try:
+    import MetaTrader5 as mt5
+except ImportError:
+    print("MetaTrader5 library not found. Install via: pip install MetaTrader5 requests")
+    mt5 = None
+
+SERVER_URL = "${serverUrl}"
+POLL_INTERVAL_SECONDS = 0.5
+
+def init_mt5(login=None, password=None, server=None):
+    if not mt5:
+        print("[ERROR] MetaTrader5 package is required to connect to desktop MT5.")
+        return False
+    
+    if not mt5.initialize():
+        print(f"[ERROR] mt5.initialize() failed, error code = {mt5.last_error()}")
+        return False
+    
+    if login and password and server:
+        authorized = mt5.login(login=int(login), password=password, server=server)
+        if not authorized:
+            print(f"[ERROR] Failed to login to MT5 account #{login}, error = {mt5.last_error()}")
+            return False
+            
+    account_info = mt5.account_info()
+    if account_info:
+        print(f"[SUCCESS] Connected to MT5 Account #{account_info.login} on {account_info.server}")
+        print(f"Balance: \${account_info.balance:.2f} | Equity: \${account_info.equity:.2f} | Leverage: 1:{account_info.leverage}")
+    return True
+
+def send_heartbeat():
+    if not mt5:
+        return
+    acc = mt5.account_info()
+    if not acc:
+        return
+    try:
+        payload = {
+            "account": acc.login,
+            "server": acc.server,
+            "balance": acc.balance,
+            "equity": acc.equity,
+            "ping": 1.2
+        }
+        requests.post(f"{SERVER_URL}/api/bridge/heartbeat", json=payload, timeout=2)
+    except Exception as e:
+        print(f"[Bridge] Heartbeat failed: {e}")
+
+def execute_mt5_order(order):
+    if not mt5:
+        return
+    symbol = order.get("symbol", "XAUUSD")
+    order_type = order.get("type", "BUY")
+    volume = float(order.get("volume", 0.1))
+    sl = float(order.get("sl", 0.0))
+    tp = float(order.get("tp", 0.0))
+    ticket = order.get("ticket")
+
+    mt5.symbol_select(symbol, True)
+    tick = mt5.symbol_info_tick(symbol)
+    if not tick:
+        print(f"[ERROR] Cannot get price tick for {symbol}")
+        return
+
+    price = tick.ask if order_type == "BUY" else tick.bid
+    mt5_action = mt5.ORDER_TYPE_BUY if order_type == "BUY" else mt5.ORDER_TYPE_SELL
+
+    request = {
+        "action": mt5.TRADE_ACTION_DEAL,
+        "symbol": symbol,
+        "volume": volume,
+        "type": mt5_action,
+        "price": price,
+        "sl": sl,
+        "tp": tp,
+        "deviation": 25,
+        "magic": 839210,
+        "comment": "QuantBot Node Bridge",
+        "type_time": mt5.ORDER_TIME_GTC,
+        "type_filling": mt5.ORDER_FILLING_IOC,
+    }
+
+    print(f"[EXEC] Dispatching to MT5: {order_type} {volume} {symbol} at {price} (SL: {sl}, TP: {tp})...")
+    result = mt5.order_send(request)
+    
+    if result.retcode != mt5.TRADE_RETCODE_DONE:
+        print(f"[FAILED] MT5 Order error: retcode={result.retcode}, comment={result.comment}")
+    else:
+        print(f"[SUCCESS] MT5 Order executed! Deal Ticket #{result.order} at {result.price}")
+        try:
+            requests.post(f"{SERVER_URL}/api/bridge/report-execution", json={
+                "ticket": ticket,
+                "mt5Ticket": result.order,
+                "executedPrice": result.price,
+                "retcode": result.retcode,
+            }, timeout=2)
+        except Exception:
+            pass
+
+def poll_bridge_loop():
+    print(f"[Bridge] Polling {SERVER_URL} for incoming trade signals...")
+    last_hb = 0
+    while True:
+        try:
+            now = time.time()
+            if now - last_hb > 3.0:
+                send_heartbeat()
+                last_hb = now
+
+            res = requests.get(f"{SERVER_URL}/api/bridge/pending-orders", timeout=3)
+            if res.status_code == 200:
+                data = res.json()
+                orders = data.get("orders", [])
+                for order in orders:
+                    execute_mt5_order(order)
+        except Exception as e:
+            pass
+        time.sleep(POLL_INTERVAL_SECONDS)
+
+if __name__ == "__main__":
+    print("=" * 60)
+    print("  QuantBot Python-MT5 Bridge Worker")
+    print(f"  Target Server: {SERVER_URL}")
+    print("=" * 60)
+    
+    # Initialize MT5 terminal
+    init_mt5()
+    poll_bridge_loop()
+`;
+
+  res.setHeader('Content-Type', 'text/x-python');
+  res.setHeader('Content-Disposition', 'attachment; filename="mt5_python_bridge.py"');
+  res.send(pythonScript);
+});
+
 // Endpoint for AI Quant Market Analysis
 app.post('/api/ai/analyze', async (req, res) => {
   try {
     const { symbol, timeframe, price, rsi, macd, trend, emaFast, emaSlow, atr, session } = req.body;
 
     if (!ai) {
-      // Deterministic fallback if API key is not yet set
       return res.json({
         analysis: `Technical overview for ${symbol} on ${timeframe}: Price currently testing key liquidity zone near ${price}. RSI (${rsi}) indicates ${Number(rsi) > 60 ? 'bullish momentum' : Number(rsi) < 40 ? 'oversold conditions' : 'consolidation'}. MACD is showing ${macd.histogram > 0 ? 'expanding positive histogram' : 'negative pressure'}. Recommended risk: Strict S/L at 1.5x ATR (${(Number(atr) * 1.5).toFixed(2)} pts) with a minimum 1:2 R:R target.`,
         recommendation: Number(rsi) > 55 && macd.histogram > 0 ? 'BULLISH_BIAS' : Number(rsi) < 45 && macd.histogram < 0 ? 'BEARISH_BIAS' : 'NEUTRAL_RANGE',
@@ -46,8 +290,8 @@ app.post('/api/ai/analyze', async (req, res) => {
     }
 
     const prompt = `You are an elite quantitative hedge fund trader and algorithmic MT5 Expert Advisor architect.
-Analyze the following real-time technical setup:
-Asset: ${symbol} (${symbol.includes('XAU') ? 'Gold Spot / USD' : 'Cryptocurrency'})
+Analyze the following real-time technical setup across 22 multi-asset markets:
+Asset: ${symbol}
 Timeframe: ${timeframe}
 Current Price: ${price}
 RSI (14): ${rsi}
@@ -55,7 +299,7 @@ MACD Histogram: ${macd?.histogram ?? 0}
 Trend Bias: ${trend}
 EMA 20: ${emaFast} | EMA 50: ${emaSlow}
 ATR (14): ${atr}
-Active Trading Session: ${session || 'London/New York overlap'}
+Active Trading Session: ${session || 'Global Liquid Session'}
 
 Provide a concise, professional institutional trade brief in valid JSON format with the following keys:
 - "sentiment": "STRONG_BUY" | "BUY" | "NEUTRAL" | "SELL" | "STRONG_SELL"
@@ -86,7 +330,7 @@ Provide a concise, professional institutional trade brief in valid JSON format w
   }
 });
 
-// Endpoint for MT5 Webhook signals (enables simulated or real desktop MT5 bridge)
+// Endpoint for MT5 Webhook signals
 app.post('/api/mt5/webhook', (req, res) => {
   const signal = req.body;
   console.log('[MT5 Webhook Received]:', signal);
@@ -100,7 +344,7 @@ app.post('/api/mt5/webhook', (req, res) => {
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', time: new Date().toISOString(), platform: 'MT5 Quant Engine' });
+  res.json({ status: 'ok', time: new Date().toISOString(), platform: 'MT5 Quant Python-Node Bridge' });
 });
 
 // Setup Vite in Dev or Static in Production

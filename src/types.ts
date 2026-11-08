@@ -1,4 +1,4 @@
-export type AssetClass = 'GOLD' | 'CRYPTO';
+export type AssetClass = 'GOLD' | 'COMMODITY' | 'CRYPTO' | 'FOREX' | 'INDEX';
 
 export interface SymbolInfo {
   symbol: string;
@@ -13,6 +13,7 @@ export interface SymbolInfo {
   contractSize: number;
   basePrice: number;
   icon: string;
+  category: 'Commodities' | 'Crypto' | 'Forex' | 'Indices';
 }
 
 export interface Candle {
@@ -58,6 +59,12 @@ export interface TradeSignal {
   takeProfit: number;
   riskReward: number;
   indicators: IndicatorValues;
+  autonomousDecision?: {
+    regime: 'TREND_EXPANSION' | 'MEAN_REVERSION' | 'LIQUIDITY_BREAKOUT' | 'VOLATILITY_SQUEEZE';
+    autoLotSize: number;
+    riskCapital: number;
+    recommendedAction: string;
+  };
 }
 
 export type OrderType = 'BUY' | 'SELL';
@@ -85,6 +92,7 @@ export interface Order {
   highestPrice?: number; // for trailing stop tracking
   lowestPrice?: number; // for trailing stop tracking
   isBotExecuted?: boolean;
+  executedViaBridge?: 'NODE_LOCAL' | 'PYTHON_MT5';
 }
 
 export interface AccountInfo {
@@ -99,7 +107,12 @@ export interface AccountInfo {
   accountNumber: string;
 }
 
+export type BotOperationMode = 'AUTONOMOUS' | 'MANUAL_RISK' | 'OFF';
+export type ExecutionMode = 'AUTOMATIC' | 'MANUAL_CONFIRM';
+
 export interface RiskSettings {
+  botMode: BotOperationMode; // 'AUTONOMOUS' (no settings needed, bot decides) vs 'MANUAL_RISK' vs 'OFF'
+  executionMode: ExecutionMode; // 'AUTOMATIC' (fires immediately) vs 'MANUAL_CONFIRM' (prompts 1-click confirmation)
   autoTradingEnabled: boolean;
   minSignalConfidence: number; // e.g. 75%
   riskMode: 'FIXED_LOT' | 'PERCENT_EQUITY';
@@ -110,12 +123,25 @@ export interface RiskSettings {
   fixedSlPips: number; // e.g. 30
   takeProfitRatio: number; // e.g. 2.0 (1:2 R:R)
   trailingStop: boolean;
-  trailingActivationPips: number; // pips into profit before trailing begins
-  trailingStepPips: number; // pips trailing distance
-  maxOpenPositions: number; // e.g. 4
-  maxDailyDrawdownPercent: number; // e.g. 5.0%
+  trailingActivationPips: number;
+  trailingStepPips: number;
+  maxOpenPositions: number;
+  maxDailyDrawdownPercent: number;
   strategyPreset: 'GOLD_CRYPTO_QUANT' | 'SCALPER_PRO' | 'TREND_MOMENTUM' | 'INSTITUTIONAL_SWING';
   activeSymbols: Record<string, boolean>;
+}
+
+export interface PythonBridgeStatus {
+  connected: boolean;
+  mode: 'PYTHON_MT5' | 'EMULATED_BRIDGE';
+  accountNumber: string;
+  brokerServer: string;
+  balance: number;
+  equity: number;
+  pingMs: number;
+  lastHeartbeat: string;
+  pendingOrdersCount: number;
+  executedOrdersCount: number;
 }
 
 export interface JournalLog {

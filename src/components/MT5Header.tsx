@@ -12,9 +12,11 @@ import {
   ChevronDown,
   PlusCircle,
   Activity,
-  ShieldAlert,
+  Cpu,
+  CheckCircle,
+  AlertCircle,
 } from 'lucide-react';
-import { RiskSettings, AccountInfo } from '../types';
+import { RiskSettings, AccountInfo, PythonBridgeStatus, BotOperationMode, ExecutionMode } from '../types';
 
 interface MT5HeaderProps {
   activeSymbol: string;
@@ -24,10 +26,13 @@ interface MT5HeaderProps {
   onChartTypeChange: (type: 'CANDLE' | 'BAR' | 'LINE') => void;
   riskSettings: RiskSettings;
   onToggleAutoTrading: () => void;
+  onChangeBotMode: (mode: BotOperationMode) => void;
+  onChangeExecutionMode: (mode: ExecutionMode) => void;
   account: AccountInfo;
+  bridgeStatus: PythonBridgeStatus;
   onOpenSignalDashboard: () => void;
   onOpenRiskSettings: () => void;
-  onOpenMQL5Bridge: () => void;
+  onOpenPythonBridge: () => void;
   onOpenNewOrder: () => void;
   indicatorsConfig: {
     showEma: boolean;
@@ -46,10 +51,13 @@ export const MT5Header: React.FC<MT5HeaderProps> = ({
   onChartTypeChange,
   riskSettings,
   onToggleAutoTrading,
+  onChangeBotMode,
+  onChangeExecutionMode,
   account,
+  bridgeStatus,
   onOpenSignalDashboard,
   onOpenRiskSettings,
-  onOpenMQL5Bridge,
+  onOpenPythonBridge,
   onOpenNewOrder,
   indicatorsConfig,
   onToggleIndicator,
@@ -77,7 +85,7 @@ export const MT5Header: React.FC<MT5HeaderProps> = ({
           <div className="flex items-center gap-1.5 font-semibold text-slate-100 tracking-tight text-xs">
             <Activity className="w-3.5 h-3.5 text-amber-400" />
             <span>MetaTrader 5</span>
-            <span className="text-[#64748b] font-normal text-[10px]">· QuantBot ECN Terminal</span>
+            <span className="text-[#64748b] font-normal text-[10px]">· Python ECN Bridge & QuantBot</span>
           </div>
 
           <div className="hidden md:flex items-center gap-3 text-[#94a3b8]">
@@ -91,8 +99,20 @@ export const MT5Header: React.FC<MT5HeaderProps> = ({
           </div>
         </div>
 
-        {/* Server & Account Metadata */}
-        <div className="flex items-center gap-3 font-mono text-[11px] tabular-nums text-[#94a3b8]">
+        {/* Python Bridge Telemetry Pill & Account Info */}
+        <div className="flex items-center gap-2.5 font-mono text-[11px] tabular-nums">
+          {/* Python MT5 Bridge Status Pill */}
+          <button
+            onClick={onOpenPythonBridge}
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-purple-950/70 border border-purple-800 text-purple-300 hover:bg-purple-900 transition-colors"
+            title="Click to view Python MT5 Connection & Script"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <Cpu className="w-3 h-3 text-purple-400" />
+            <span className="font-bold">Python MT5: {bridgeStatus.connected ? 'Connected' : 'Standby'}</span>
+            <span className="text-[#94a3b8] text-[10px]">({bridgeStatus.pingMs}ms)</span>
+          </button>
+
           <span className="hidden sm:inline text-slate-300">
             Account: <strong className="text-white">{account.accountNumber}</strong>
           </span>
@@ -100,17 +120,12 @@ export const MT5Header: React.FC<MT5HeaderProps> = ({
           <span className="hidden lg:inline text-[#94a3b8]">
             Server: <span className="text-slate-300">{account.server}</span>
           </span>
-          <span className="hidden sm:inline text-[#64748b]">·</span>
-          <span className="text-emerald-400 flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            1.2 ms
-          </span>
         </div>
       </div>
 
-      {/* Primary Execution & Tool Controls */}
+      {/* Primary Toolbar */}
       <div className="flex items-center justify-between px-3 py-1.5 gap-2 overflow-x-auto">
-        {/* Left Control Group */}
+        {/* Left Toolbar Controls */}
         <div className="flex items-center gap-2">
           {/* New Order Button */}
           <button
@@ -122,28 +137,73 @@ export const MT5Header: React.FC<MT5HeaderProps> = ({
             <span>New Order</span>
           </button>
 
-          {/* MT5 AutoTrading Master Button */}
-          <button
-            onClick={onToggleAutoTrading}
-            className={`flex items-center gap-1.5 px-3 py-1 font-semibold rounded transition-all whitespace-nowrap border ${
-              riskSettings.autoTradingEnabled
-                ? 'bg-emerald-950/80 hover:bg-emerald-900 border-emerald-500/80 text-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
-                : 'bg-red-950/80 hover:bg-red-900 border-red-500/80 text-red-300'
-            }`}
-            title="Toggle Automated Trade Execution Engine"
-          >
-            {riskSettings.autoTradingEnabled ? (
-              <>
-                <Play className="w-3.5 h-3.5 fill-emerald-400 text-emerald-400" />
-                <span>Algo Trading: ON</span>
-              </>
-            ) : (
-              <>
-                <Square className="w-3.5 h-3.5 fill-red-400 text-red-400" />
-                <span>Algo Trading: OFF</span>
-              </>
-            )}
-          </button>
+          {/* Autonomous / Custom Risk / Manual Mode Selector */}
+          <div className="flex items-center bg-[#0d0f15] p-0.5 rounded border border-[#232938]">
+            <button
+              onClick={() => onChangeBotMode('AUTONOMOUS')}
+              className={`px-2.5 py-1 font-bold rounded flex items-center gap-1 text-[11px] transition-colors ${
+                riskSettings.botMode === 'AUTONOMOUS'
+                  ? 'bg-gradient-to-r from-purple-900 to-indigo-900 text-purple-200 border border-purple-600 shadow-sm'
+                  : 'text-[#94a3b8] hover:text-slate-200'
+              }`}
+              title="Autonomous Auto-Pilot: Bot decides regime, position sizing, SL/TP without manual tuning"
+            >
+              <Cpu className="w-3 h-3 text-purple-400" />
+              <span>Autonomous AI Pilot</span>
+            </button>
+
+            <button
+              onClick={() => onChangeBotMode('MANUAL_RISK')}
+              className={`px-2.5 py-1 font-medium rounded text-[11px] transition-colors ${
+                riskSettings.botMode === 'MANUAL_RISK'
+                  ? 'bg-[#2a3245] text-amber-300 font-bold border border-amber-600/50'
+                  : 'text-[#94a3b8] hover:text-slate-200'
+              }`}
+              title="Rule-Based: Uses your custom manual risk parameters"
+            >
+              <span>Custom Risk</span>
+            </button>
+
+            <button
+              onClick={() => onChangeBotMode('OFF')}
+              className={`px-2 py-1 font-medium rounded text-[11px] transition-colors ${
+                riskSettings.botMode === 'OFF'
+                  ? 'bg-slate-800 text-slate-300 font-bold'
+                  : 'text-[#64748b] hover:text-slate-200'
+              }`}
+              title="Manual Only: Automated execution disabled"
+            >
+              <span>Manual</span>
+            </button>
+          </div>
+
+          {/* Execution Mode: Automatic vs Manual Confirmation */}
+          {riskSettings.botMode !== 'OFF' && (
+            <div className="flex items-center bg-[#0d0f15] p-0.5 rounded border border-[#232938]">
+              <button
+                onClick={() => onChangeExecutionMode('AUTOMATIC')}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                  riskSettings.executionMode === 'AUTOMATIC'
+                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-700'
+                    : 'text-[#64748b] hover:text-slate-300'
+                }`}
+                title="Automatically executes orders upon signal confirmation"
+              >
+                Auto Execute
+              </button>
+              <button
+                onClick={() => onChangeExecutionMode('MANUAL_CONFIRM')}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                  riskSettings.executionMode === 'MANUAL_CONFIRM'
+                    ? 'bg-amber-950 text-amber-300 border border-amber-700'
+                    : 'text-[#64748b] hover:text-slate-300'
+                }`}
+                title="Bot decides and presents 1-click execution cards"
+              >
+                Manual Confirm
+              </button>
+            </div>
+          )}
 
           <div className="h-4 w-[1px] bg-[#232938] mx-0.5" />
 
@@ -263,7 +323,7 @@ export const MT5Header: React.FC<MT5HeaderProps> = ({
 
         {/* Right Action Group */}
         <div className="flex items-center gap-2">
-          {/* Signal Dashboard Button */}
+          {/* Signal Dashboard */}
           <button
             onClick={onOpenSignalDashboard}
             className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded font-medium transition-colors whitespace-nowrap"
@@ -278,17 +338,17 @@ export const MT5Header: React.FC<MT5HeaderProps> = ({
             className="flex items-center gap-1.5 px-3 py-1 bg-[#1a1f2c] hover:bg-[#242b3d] text-slate-300 border border-[#2a3245] rounded transition-colors whitespace-nowrap"
           >
             <Sliders className="w-3.5 h-3.5 text-blue-400" />
-            <span>Risk Settings</span>
+            <span>Risk Controls</span>
           </button>
 
-          {/* MQL5 EA Code Bridge */}
+          {/* Python MT5 Bridge Modal Button */}
           <button
-            onClick={onOpenMQL5Bridge}
-            className="flex items-center gap-1.5 px-2.5 py-1 bg-[#1a1f2c] hover:bg-[#242b3d] text-slate-300 border border-[#2a3245] rounded transition-colors whitespace-nowrap"
-            title="View MQL5 Code & Webhook Connection"
+            onClick={onOpenPythonBridge}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-800 rounded transition-colors whitespace-nowrap"
+            title="Download / View Python MT5 Bridge Worker"
           >
             <Code2 className="w-3.5 h-3.5 text-purple-400" />
-            <span className="hidden sm:inline">MQL5 EA</span>
+            <span>Python MT5</span>
           </button>
 
           {/* Fullscreen Toggle */}

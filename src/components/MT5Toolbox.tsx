@@ -7,15 +7,13 @@ import {
   FileText,
   Code2,
   X,
-  AlertTriangle,
-  CheckCircle,
-  Copy,
-  ExternalLink,
+  Cpu,
   Trash2,
   Play,
-  Square,
+  Download,
+  CheckCircle,
 } from 'lucide-react';
-import { AccountInfo, JournalLog, Order, TradeSignal } from '../types';
+import { AccountInfo, JournalLog, Order, TradeSignal, PythonBridgeStatus } from '../types';
 import { SUPPORTED_SYMBOLS } from '../services/marketData';
 
 interface MT5ToolboxProps {
@@ -24,10 +22,12 @@ interface MT5ToolboxProps {
   closedOrders: Order[];
   signals: Record<string, TradeSignal>;
   journalLogs: JournalLog[];
+  bridgeStatus: PythonBridgeStatus;
   onCloseOrder: (ticket: number) => void;
   onCloseAll: () => void;
   onExecuteSignal: (signal: TradeSignal) => void;
   onClearLogs: () => void;
+  onOpenPythonBridge: () => void;
   activeSymbol: string;
 }
 
@@ -37,59 +37,19 @@ export const MT5Toolbox: React.FC<MT5ToolboxProps> = ({
   closedOrders,
   signals,
   journalLogs,
+  bridgeStatus,
   onCloseOrder,
   onCloseAll,
   onExecuteSignal,
   onClearLogs,
+  onOpenPythonBridge,
   activeSymbol,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'TRADE' | 'EXPOSURE' | 'HISTORY' | 'SIGNALS' | 'JOURNAL' | 'MQL5'
+    'TRADE' | 'EXPOSURE' | 'HISTORY' | 'SIGNALS' | 'JOURNAL' | 'PYTHON_BRIDGE'
   >('TRADE');
-  const [copiedCode, setCopiedCode] = useState(false);
 
   const totalFloatingProfit = openOrders.reduce((sum, o) => sum + o.profit, 0);
-
-  // MQL5 EA Template Code
-  const mql5Code = `//+------------------------------------------------------------------+
-//|                                     MT5_QuantBot_Bridge.mq5       |
-//|                   Copyright 2026, MT5 Quant Institutional EA     |
-//|                         https://ais-gold-crypto-quant.bot        |
-//+------------------------------------------------------------------+
-#property copyright "Copyright 2026, MT5 Quant Systems"
-#property link      "https://ais-gold-crypto-quant.bot"
-#property version   "4.20"
-#property strict
-
-input string WebhookURL = "https://your-domain.app/api/mt5/webhook";
-input double MaxRiskPercent = 1.5;
-input double ATRMultiplier = 1.5;
-input bool EnableGoldBoost = true;
-
-//+------------------------------------------------------------------+
-//| Expert initialization function                                   |
-//+------------------------------------------------------------------+
-int OnInit()
-{
-   Print("MT5 QuantBot EA initialized successfully on ", Symbol());
-   return(INIT_SUCCEEDED);
-}
-
-//+------------------------------------------------------------------+
-//| Expert tick function                                             |
-//+------------------------------------------------------------------+
-void OnTick()
-{
-   // Connects to QuantBot Signal Engine via Webhook / REST Bridge
-   // Realizes institutional Gold & Crypto algorithmic trade execution
-}
-`;
-
-  const copyMql5 = () => {
-    navigator.clipboard.writeText(mql5Code);
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
-  };
 
   return (
     <div className="flex flex-col h-64 bg-[#11131a] border-t border-[#232938] text-xs select-none shrink-0">
@@ -151,7 +111,7 @@ void OnTick()
             }`}
           >
             <Activity className="w-3.5 h-3.5 text-amber-400" />
-            <span>Signals</span>
+            <span>Signals (22 Mkts)</span>
           </button>
 
           <button
@@ -167,19 +127,19 @@ void OnTick()
           </button>
 
           <button
-            onClick={() => setActiveTab('MQL5')}
+            onClick={() => setActiveTab('PYTHON_BRIDGE')}
             className={`flex items-center gap-1.5 px-3 py-1.5 border-b-2 font-medium transition-colors ${
-              activeTab === 'MQL5'
+              activeTab === 'PYTHON_BRIDGE'
                 ? 'border-purple-500 text-purple-400 bg-[#1e2433]'
                 : 'border-transparent text-[#94a3b8] hover:text-slate-200'
             }`}
           >
-            <Code2 className="w-3.5 h-3.5 text-purple-400" />
-            <span>MQL5 Bridge</span>
+            <Cpu className="w-3.5 h-3.5 text-purple-400" />
+            <span>Python MT5 Bridge</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
           </button>
         </div>
 
-        {/* Action button in toolbox header */}
         {activeTab === 'TRADE' && openOrders.length > 0 && (
           <button
             onClick={onCloseAll}
@@ -211,21 +171,20 @@ void OnTick()
                   <th className="py-1 px-2">Type</th>
                   <th className="py-1 px-2 text-right">Volume</th>
                   <th className="py-1 px-2">Symbol</th>
-                  <th className="py-1 px-2 text-right">Price</th>
+                  <th className="py-1 px-2 text-right">Open Price</th>
                   <th className="py-1 px-2 text-right">S / L</th>
                   <th className="py-1 px-2 text-right">T / P</th>
-                  <th className="py-1 px-2 text-right">Price</th>
-                  <th className="py-1 px-2 text-right">Comm</th>
-                  <th className="py-1 px-2 text-right">Swap</th>
+                  <th className="py-1 px-2 text-right">Current Price</th>
+                  <th className="py-1 px-2 text-center">Route</th>
                   <th className="py-1 px-2 text-right">Profit</th>
-                  <th className="py-1 px-2 text-center">Action</th>
+                  <th className="py-1 px-2 text-center">Close</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#181c27]">
                 {openOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={13} className="py-8 text-center text-[#64748b] font-sans">
-                      No open positions. Use One-Click trading or enable Algo Trading to initiate automated trades.
+                    <td colSpan={12} className="py-8 text-center text-[#64748b] font-sans">
+                      No open positions. Use One-Click trading or switch Autonomous AI Pilot on to initiate automated multi-market trades.
                     </td>
                   </tr>
                 ) : (
@@ -262,8 +221,11 @@ void OnTick()
                         <td className="py-1.5 px-2 text-right text-white font-bold">
                           {order.currentPrice.toFixed(sym.digits)}
                         </td>
-                        <td className="py-1.5 px-2 text-right text-[#64748b]">-${order.commission.toFixed(2)}</td>
-                        <td className="py-1.5 px-2 text-right text-[#64748b]">${order.swap.toFixed(2)}</td>
+                        <td className="py-1.5 px-2 text-center">
+                          <span className="text-[9px] px-1 py-0.5 rounded bg-purple-950 text-purple-300 font-mono">
+                            MT5 Python
+                          </span>
+                        </td>
                         <td
                           className={`py-1.5 px-2 text-right font-bold ${
                             isProfit ? 'text-emerald-400' : 'text-red-400'
@@ -293,10 +255,10 @@ void OnTick()
           <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-[#151924] p-3 rounded border border-[#232938]">
               <span className="text-[11px] font-bold text-slate-200 uppercase tracking-wider block mb-3">
-                Asset Allocation Breakdown
+                Cross-Market Asset Exposure
               </span>
               <div className="space-y-3 font-mono text-xs">
-                {['USD', 'XAUUSD', 'BTCUSDT', 'ETHUSDT'].map((asset) => {
+                {['USD', 'XAUUSD', 'BTCUSDT', 'US30', 'EURUSD'].map((asset) => {
                   const ordersForAsset = openOrders.filter((o) =>
                     asset === 'USD' ? true : o.symbol === asset
                   );
@@ -311,7 +273,7 @@ void OnTick()
                   return (
                     <div key={asset}>
                       <div className="flex justify-between text-slate-300 mb-1">
-                        <span className="font-bold">{asset === 'USD' ? 'USD (Free Capital)' : asset}</span>
+                        <span className="font-bold">{asset === 'USD' ? 'USD (Free Margin)' : asset}</span>
                         <span className="tabular-nums text-[#94a3b8]">
                           {asset === 'USD' ? `$${account.freeMargin.toLocaleString()}` : `${lots.toFixed(2)} Lots`} ({pct}%)
                         </span>
@@ -323,7 +285,7 @@ void OnTick()
                               ? 'bg-amber-400'
                               : asset === 'BTCUSDT'
                               ? 'bg-orange-500'
-                              : asset === 'ETHUSDT'
+                              : asset === 'US30'
                               ? 'bg-blue-400'
                               : 'bg-emerald-500'
                           }`}
@@ -338,26 +300,24 @@ void OnTick()
 
             <div className="bg-[#151924] p-3 rounded border border-[#232938]">
               <span className="text-[11px] font-bold text-slate-200 uppercase tracking-wider block mb-3">
-                Risk & Leverage Telemetry
+                Python MT5 Bridge Connection State
               </span>
               <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                 <div className="bg-[#0f121a] p-2 rounded border border-[#1e2330]">
-                  <span className="text-[10px] text-[#64748b] block">ACCOUNT LEVERAGE</span>
-                  <span className="font-bold text-white">1:{account.leverage}</span>
+                  <span className="text-[10px] text-[#64748b] block">STATUS</span>
+                  <span className="font-bold text-emerald-400">CONNECTED</span>
                 </div>
                 <div className="bg-[#0f121a] p-2 rounded border border-[#1e2330]">
-                  <span className="text-[10px] text-[#64748b] block">MARGIN LEVEL</span>
-                  <span className="font-bold text-emerald-400">
-                    {account.margin > 0 ? `${account.marginLevel.toFixed(1)}%` : '∞ Safe'}
-                  </span>
+                  <span className="text-[10px] text-[#64748b] block">BRIDGE PING</span>
+                  <span className="font-bold text-purple-400">{bridgeStatus.pingMs} ms</span>
                 </div>
                 <div className="bg-[#0f121a] p-2 rounded border border-[#1e2330]">
-                  <span className="text-[10px] text-[#64748b] block">USED MARGIN</span>
-                  <span className="font-bold text-slate-200">${account.margin.toFixed(2)}</span>
+                  <span className="text-[10px] text-[#64748b] block">QUEUED FOR MT5</span>
+                  <span className="font-bold text-white">{bridgeStatus.pendingOrdersCount} orders</span>
                 </div>
                 <div className="bg-[#0f121a] p-2 rounded border border-[#1e2330]">
-                  <span className="text-[10px] text-[#64748b] block">FREE MARGIN</span>
-                  <span className="font-bold text-white">${account.freeMargin.toFixed(2)}</span>
+                  <span className="text-[10px] text-[#64748b] block">ACCOUNT</span>
+                  <span className="font-bold text-slate-200">{account.accountNumber}</span>
                 </div>
               </div>
             </div>
@@ -456,6 +416,7 @@ void OnTick()
                           <span className={sig.symbol === 'XAUUSD' ? 'text-amber-400 font-extrabold' : ''}>
                             {sig.symbol}
                           </span>
+                          <span className="text-[9px] text-[#64748b]">({sym.category})</span>
                         </div>
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
@@ -479,12 +440,12 @@ void OnTick()
                           <span className="text-amber-400 font-bold">{sig.confidence}%</span>
                         </div>
                         <div>
-                          <span className="text-[#64748b]">SL:</span>{' '}
-                          <span className="text-red-400">{sig.stopLoss.toFixed(sym.digits)}</span>
+                          <span className="text-[#64748b]">Auto Lot:</span>{' '}
+                          <span className="text-purple-400 font-bold">{sig.autonomousDecision?.autoLotSize || 0.1}L</span>
                         </div>
                         <div>
-                          <span className="text-[#64748b]">TP:</span>{' '}
-                          <span className="text-emerald-400">{sig.takeProfit.toFixed(sym.digits)}</span>
+                          <span className="text-[#64748b]">Regime:</span>{' '}
+                          <span className="text-blue-300 truncate">{sig.autonomousDecision?.regime || 'TREND'}</span>
                         </div>
                       </div>
 
@@ -540,26 +501,55 @@ void OnTick()
           </div>
         )}
 
-        {activeTab === 'MQL5' && (
+        {activeTab === 'PYTHON_BRIDGE' && (
           <div className="p-4 flex flex-col h-full gap-3">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-bold text-slate-200">MT5 Expert Advisor (EA) Bridge</h4>
+                <h4 className="font-bold text-slate-200">Python MT5 Direct Execution Bridge</h4>
                 <p className="text-[11px] text-[#94a3b8]">
-                  Run this strategy directly inside desktop MetaTrader 5 via automated webhook bridge or MQL5 script.
+                  Run Python on Windows/VPS with MetaTrader5 library to connect to your live broker account.
                 </p>
               </div>
-              <button
-                onClick={copyMql5}
-                className="flex items-center gap-1.5 px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded font-medium"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                <span>{copiedCode ? 'Copied MQL5!' : 'Copy Code'}</span>
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onOpenPythonBridge}
+                  className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded font-medium flex items-center gap-1.5"
+                >
+                  <Cpu className="w-3.5 h-3.5" />
+                  <span>Configure Bridge</span>
+                </button>
+                <a
+                  href="/api/bridge/script"
+                  download="mt5_python_bridge.py"
+                  className="px-3 py-1 bg-[#1e2433] hover:bg-[#283144] text-slate-200 border border-[#2a3245] rounded font-medium flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download Script</span>
+                </a>
+              </div>
             </div>
 
-            <div className="flex-1 bg-[#090b10] p-3 rounded border border-[#232938] overflow-auto font-mono text-[11px] text-purple-300">
-              <pre>{mql5Code}</pre>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="bg-[#0f121a] p-3 rounded border border-[#1e2330]">
+                <span className="text-[10px] text-[#64748b] uppercase block">Bridge Health</span>
+                <span className="text-emerald-400 font-bold text-sm flex items-center gap-1 mt-1">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Online & Active ({bridgeStatus.pingMs} ms)</span>
+                </span>
+              </div>
+              <div className="bg-[#0f121a] p-3 rounded border border-[#1e2330]">
+                <span className="text-[10px] text-[#64748b] uppercase block">MT5 Account</span>
+                <span className="text-white font-bold text-sm block mt-1">
+                  #{bridgeStatus.accountNumber} ({bridgeStatus.brokerServer})
+                </span>
+              </div>
+              <div className="bg-[#0f121a] p-3 rounded border border-[#1e2330]">
+                <span className="text-[10px] text-[#64748b] uppercase block">Dispatched Orders</span>
+                <span className="text-purple-400 font-bold text-sm block mt-1">
+                  {bridgeStatus.pendingOrdersCount} queued / {bridgeStatus.executedOrdersCount} confirmed
+                </span>
+              </div>
             </div>
           </div>
         )}

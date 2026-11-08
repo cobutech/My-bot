@@ -303,6 +303,19 @@ export function generateSignal(
     takeProfit = currentPrice + atrSafe * 3.0;
   }
 
+  // Autonomous Regime Classification
+  let regime: 'TREND_EXPANSION' | 'MEAN_REVERSION' | 'LIQUIDITY_BREAKOUT' | 'VOLATILITY_SQUEEZE' = 'TREND_EXPANSION';
+  if (indicators.bollinger.bandwidth < 1.2) {
+    regime = 'VOLATILITY_SQUEEZE';
+  } else if (indicators.rsi < 28 || indicators.rsi > 72) {
+    regime = 'MEAN_REVERSION';
+  } else if (Math.abs(score) > 55) {
+    regime = 'LIQUIDITY_BREAKOUT';
+  }
+
+  // Autonomous lot suggestion for preview
+  const estimatedAutoLots = Number(Math.max(0.01, (350 / (atrSafe * 100))).toFixed(2));
+
   return {
     id: `sig-${symbol}-${Date.now()}`,
     symbol,
@@ -316,5 +329,11 @@ export function generateSignal(
     takeProfit: Number(takeProfit.toFixed(digits)),
     riskReward: takeProfitRatio,
     indicators,
+    autonomousDecision: {
+      regime,
+      autoLotSize: estimatedAutoLots,
+      riskCapital: 350,
+      recommendedAction: `${type} ${estimatedAutoLots} Lots at ${currentPrice.toFixed(digits)} (Dynamic ${regime})`,
+    },
   };
 }

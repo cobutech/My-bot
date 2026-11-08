@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
+import { Search, ArrowUpRight, ArrowDownRight, Filter } from 'lucide-react';
 import { SymbolInfo } from '../types';
 import { SUPPORTED_SYMBOLS, Tick } from '../services/marketData';
 
@@ -10,6 +10,8 @@ interface MarketWatchProps {
   onQuickTrade: (symbol: string, type: 'BUY' | 'SELL') => void;
 }
 
+type CategoryFilter = 'ALL' | 'Commodities' | 'Crypto' | 'Forex' | 'Indices';
+
 export const MarketWatch: React.FC<MarketWatchProps> = ({
   activeSymbol,
   onSelectSymbol,
@@ -17,6 +19,7 @@ export const MarketWatch: React.FC<MarketWatchProps> = ({
   onQuickTrade,
 }) => {
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('ALL');
   const [activeTab, setActiveTab] = useState<'WATCHLIST' | 'TICK_DEPTH'>('WATCHLIST');
   const [flashStates, setFlashStates] = useState<Record<string, 'UP' | 'DOWN' | null>>({});
 
@@ -35,16 +38,18 @@ export const MarketWatch: React.FC<MarketWatchProps> = ({
 
     const timer = setTimeout(() => {
       setFlashStates({});
-    }, 400);
+    }, 380);
 
     return () => clearTimeout(timer);
   }, [ticks]);
 
-  const filteredSymbols = symbolsList.filter(
-    (s) =>
+  const filteredSymbols = symbolsList.filter((s) => {
+    const matchesSearch =
       s.symbol.toLowerCase().includes(search.toLowerCase()) ||
-      s.name.toLowerCase().includes(search.toLowerCase())
-  );
+      s.name.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = categoryFilter === 'ALL' || s.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
   const activeTick = ticks[activeSymbol] || {
     bid: 0,
@@ -60,10 +65,10 @@ export const MarketWatch: React.FC<MarketWatchProps> = ({
     <div className="flex flex-col h-full bg-[#11131a] border-r border-[#232938] text-xs select-none w-80 shrink-0">
       {/* Panel Header */}
       <div className="flex items-center justify-between px-3 py-2 bg-[#161a25] border-b border-[#232938]">
-        <div className="flex items-center gap-2 font-semibold text-slate-200">
+        <div className="flex items-center gap-1.5 font-semibold text-slate-200">
           <span>Market Watch</span>
           <span className="text-[10px] text-amber-400 font-mono bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800/60">
-            Gold & Crypto
+            22 Markets
           </span>
         </div>
         <div className="flex items-center text-[11px] bg-[#0d0f15] p-0.5 rounded border border-[#232938]">
@@ -75,7 +80,7 @@ export const MarketWatch: React.FC<MarketWatchProps> = ({
                 : 'text-[#94a3b8] hover:text-slate-200'
             }`}
           >
-            Symbols
+            Watchlist
           </button>
           <button
             onClick={() => setActiveTab('TICK_DEPTH')}
@@ -90,13 +95,30 @@ export const MarketWatch: React.FC<MarketWatchProps> = ({
         </div>
       </div>
 
+      {/* Category Filter Tabs */}
+      <div className="flex items-center gap-1 px-2 py-1.5 bg-[#141722] border-b border-[#1e2330] overflow-x-auto text-[10px]">
+        {(['ALL', 'Commodities', 'Crypto', 'Forex', 'Indices'] as CategoryFilter[]).map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setCategoryFilter(cat)}
+            className={`px-2 py-0.5 rounded whitespace-nowrap transition-colors font-medium ${
+              categoryFilter === cat
+                ? 'bg-[#2a3245] text-white font-bold'
+                : 'text-[#94a3b8] hover:text-slate-200'
+            }`}
+          >
+            {cat === 'ALL' ? 'All (22)' : cat}
+          </button>
+        ))}
+      </div>
+
       {/* Search Bar */}
       <div className="p-2 border-b border-[#1e2330]">
         <div className="relative">
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-[#64748b]" />
           <input
             type="text"
-            placeholder="Search symbols (XAU, BTC, ETH)..."
+            placeholder="Search 22 symbols (Gold, BTC, US30)..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-[#0d0f15] text-slate-200 placeholder-[#64748b] text-[11px] pl-8 pr-2.5 py-1.5 rounded border border-[#232938] focus:outline-none focus:border-blue-500"
@@ -130,7 +152,7 @@ export const MarketWatch: React.FC<MarketWatchProps> = ({
                 <div
                   key={item.symbol}
                   onClick={() => onSelectSymbol(item.symbol)}
-                  className={`grid grid-cols-12 items-center px-2.5 py-2 cursor-pointer transition-colors ${
+                  className={`grid grid-cols-12 items-center px-2.5 py-1.5 cursor-pointer transition-colors ${
                     isSelected
                       ? 'bg-[#1e2433] border-l-2 border-blue-500'
                       : 'hover:bg-[#151922]'
@@ -142,14 +164,14 @@ export const MarketWatch: React.FC<MarketWatchProps> = ({
                       : ''
                   }`}
                 >
-                  {/* Symbol Name & Class */}
+                  {/* Symbol Name & Category Tag */}
                   <div className="col-span-4 flex flex-col min-w-0 pr-1">
                     <div className="flex items-center gap-1 font-mono font-bold text-slate-200 truncate">
                       <span>{item.icon}</span>
                       <span className={isGold ? 'text-amber-400 font-extrabold' : ''}>{item.symbol}</span>
                     </div>
-                    <span className="text-[10px] text-[#64748b] truncate font-sans">
-                      {isGold ? 'Spot Gold' : item.name.split('/')[0]}
+                    <span className="text-[9px] text-[#64748b] truncate font-sans">
+                      {item.category}
                     </span>
                   </div>
 
@@ -179,7 +201,7 @@ export const MarketWatch: React.FC<MarketWatchProps> = ({
                     {askDisplay}
                   </div>
 
-                  {/* 24h Change / Spread Tag */}
+                  {/* 24h Change Tag */}
                   <div className="col-span-2 text-right">
                     <span
                       className={`inline-block font-mono text-[9px] tabular-nums font-semibold px-1 py-0.5 rounded ${
@@ -199,7 +221,7 @@ export const MarketWatch: React.FC<MarketWatchProps> = ({
       ) : (
         /* Market Depth / Quick Trade Card */
         <div className="flex-1 p-3 flex flex-col gap-3 overflow-y-auto">
-          <div className="p-3 bg-[#151922] rounded border border-[#232938]">
+          <div className="p-3 bg-[#151924] rounded border border-[#232938]">
             <div className="flex items-center justify-between mb-2">
               <span className="font-bold text-slate-200 font-mono flex items-center gap-1.5 text-sm">
                 <span>{activeSymInfo.icon}</span>
@@ -241,30 +263,26 @@ export const MarketWatch: React.FC<MarketWatchProps> = ({
             </div>
           </div>
 
-          <div className="p-3 bg-[#151922] rounded border border-[#232938] text-[11px] font-mono">
+          <div className="p-3 bg-[#151924] rounded border border-[#232938] text-[11px] font-mono">
             <div className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider mb-2">
-              Market Statistics (24h)
+              Market Specifications
             </div>
             <div className="space-y-1.5 text-slate-300">
               <div className="flex justify-between">
-                <span className="text-[#64748b]">24h High:</span>
-                <span className="tabular-nums text-emerald-400">{activeTick.high24h.toFixed(activeSymInfo.digits)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#64748b]">24h Low:</span>
-                <span className="tabular-nums text-red-400">{activeTick.low24h.toFixed(activeSymInfo.digits)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#64748b]">Min Contract:</span>
-                <span className="tabular-nums">{activeSymInfo.minLot} Lots</span>
+                <span className="text-[#64748b]">Category:</span>
+                <span className="text-white font-bold">{activeSymInfo.category}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[#64748b]">Contract Size:</span>
                 <span className="tabular-nums">{activeSymInfo.contractSize} units</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#64748b]">Execution:</span>
-                <span className="text-emerald-400 font-bold">Raw ECN Instant</span>
+                <span className="text-[#64748b]">Min Lot:</span>
+                <span className="tabular-nums">{activeSymInfo.minLot} Lots</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#64748b]">Bridge Routing:</span>
+                <span className="text-purple-400 font-bold">Python MT5 Direct</span>
               </div>
             </div>
           </div>
@@ -273,8 +291,8 @@ export const MarketWatch: React.FC<MarketWatchProps> = ({
 
       {/* Footer Info */}
       <div className="px-3 py-1.5 bg-[#0f121a] border-t border-[#1e2330] text-[10px] text-[#64748b] flex justify-between font-mono">
-        <span>6 Symbols Active</span>
-        <span className="text-emerald-400 font-semibold">ECN Liquidity Active</span>
+        <span>{filteredSymbols.length} / 22 Markets Listed</span>
+        <span className="text-emerald-400 font-semibold">Feed: Active</span>
       </div>
     </div>
   );

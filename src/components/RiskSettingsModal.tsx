@@ -3,14 +3,12 @@ import {
   X,
   Shield,
   Sliders,
-  AlertTriangle,
   Check,
   RefreshCw,
-  Zap,
-  Lock,
+  Cpu,
   Layers,
 } from 'lucide-react';
-import { RiskSettings } from '../types';
+import { RiskSettings, BotOperationMode, ExecutionMode } from '../types';
 import { SUPPORTED_SYMBOLS } from '../services/marketData';
 
 interface RiskSettingsModalProps {
@@ -31,6 +29,7 @@ export const RiskSettingsModal: React.FC<RiskSettingsModalProps> = ({
   const [settings, setSettings] = useState<RiskSettings>({ ...currentSettings });
   const [resetAmount, setResetAmount] = useState<number>(25000);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
 
   if (!isOpen) return null;
 
@@ -71,7 +70,7 @@ export const RiskSettingsModal: React.FC<RiskSettingsModalProps> = ({
         trailingStop: true,
         trailingActivationPips: 25,
         trailingStepPips: 18,
-        maxOpenPositions: 4,
+        maxOpenPositions: 5,
       }));
     } else if (preset === 'INSTITUTIONAL_SWING') {
       setSettings((prev) => ({
@@ -83,10 +82,9 @@ export const RiskSettingsModal: React.FC<RiskSettingsModalProps> = ({
         atrMultiplier: 2.0,
         takeProfitRatio: 3.0,
         trailingStop: false,
-        maxOpenPositions: 3,
+        maxOpenPositions: 4,
       }));
     } else {
-      // Default GOLD_CRYPTO_QUANT
       setSettings((prev) => ({
         ...prev,
         strategyPreset: 'GOLD_CRYPTO_QUANT',
@@ -98,7 +96,7 @@ export const RiskSettingsModal: React.FC<RiskSettingsModalProps> = ({
         trailingStop: true,
         trailingActivationPips: 20,
         trailingStepPips: 15,
-        maxOpenPositions: 4,
+        maxOpenPositions: 5,
       }));
     }
   };
@@ -112,19 +110,23 @@ export const RiskSettingsModal: React.FC<RiskSettingsModalProps> = ({
     }, 600);
   };
 
+  const symbolsList = Object.values(SUPPORTED_SYMBOLS).filter(
+    (s) => categoryFilter === 'ALL' || s.category === categoryFilter
+  );
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto select-none">
       <div className="relative w-full max-w-2xl bg-[#12151f] border border-[#232938] rounded-xl shadow-2xl overflow-hidden my-auto flex flex-col max-h-[92vh]">
-        {/* Modal Header */}
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 bg-[#161a25] border-b border-[#232938]">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 bg-blue-500/10 text-blue-400 rounded-lg border border-blue-500/20">
               <Shield className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-100">Manual Risk Management & Execution Control</h2>
+              <h2 className="text-sm font-bold text-slate-100">Bot Intelligence & Risk Parameters</h2>
               <p className="text-[11px] text-[#94a3b8]">
-                Configure automated position sizing, stop loss protocols, and portfolio circuit breakers
+                Switch between Autonomous AI Auto-Pilot and Custom manual risk parameters across 22 markets
               </p>
             </div>
           </div>
@@ -137,281 +139,240 @@ export const RiskSettingsModal: React.FC<RiskSettingsModalProps> = ({
           </button>
         </div>
 
-        {/* Modal Content */}
+        {/* Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs text-slate-200">
-          {/* Strategy Presets */}
-          <div className="bg-[#151924] p-3.5 rounded-lg border border-[#232938]">
-            <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block mb-2">
-              Algorithmic Strategy Presets:
-            </span>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[
-                { id: 'GOLD_CRYPTO_QUANT', label: 'Gold/Crypto Quant', desc: 'Balanced ECN' },
-                { id: 'SCALPER_PRO', label: 'Scalper Pro', desc: 'Fast M1/M5' },
-                { id: 'TREND_MOMENTUM', label: 'Trend Swing', desc: 'EMA/MACD' },
-                { id: 'INSTITUTIONAL_SWING', label: 'Inst. Swing', desc: 'High R:R' },
-              ].map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => handleApplyPreset(p.id as any)}
-                  className={`p-2 rounded-lg border text-left transition-colors ${
-                    settings.strategyPreset === p.id
-                      ? 'bg-blue-950 border-blue-500 text-blue-300 font-bold'
-                      : 'bg-[#0f121a] border-[#1e2330] text-slate-300 hover:bg-[#1a1f2c]'
-                  }`}
-                >
-                  <span className="block text-xs font-mono">{p.label}</span>
-                  <span className="block text-[10px] text-[#64748b]">{p.desc}</span>
-                </button>
-              ))}
+          {/* Autonomous vs Manual Mode Selector */}
+          <div className="bg-[#151924] p-4 rounded-lg border border-[#232938] space-y-3">
+            <span className="font-bold text-slate-100 block">Bot Operation Mode</span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setSettings((s) => ({ ...s, botMode: 'AUTONOMOUS' }))}
+                className={`p-3 rounded-lg border text-left transition-colors ${
+                  settings.botMode === 'AUTONOMOUS'
+                    ? 'bg-gradient-to-r from-purple-950 to-indigo-950 border-purple-500 text-purple-200 font-bold shadow-md'
+                    : 'bg-[#0f121a] border-[#1e2330] text-slate-300 hover:bg-[#1a1f2c]'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 font-bold text-xs mb-1">
+                  <Cpu className="w-4 h-4 text-purple-400" />
+                  <span>Autonomous AI Pilot</span>
+                </div>
+                <p className="text-[10px] text-[#94a3b8] font-normal">
+                  No manual settings required. Bot analyzes regimes, sizes lots dynamically, and manages SL/TP automatically.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSettings((s) => ({ ...s, botMode: 'MANUAL_RISK' }))}
+                className={`p-3 rounded-lg border text-left transition-colors ${
+                  settings.botMode === 'MANUAL_RISK'
+                    ? 'bg-blue-950 border-blue-500 text-blue-200 font-bold shadow-md'
+                    : 'bg-[#0f121a] border-[#1e2330] text-slate-300 hover:bg-[#1a1f2c]'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 font-bold text-xs mb-1">
+                  <Sliders className="w-4 h-4 text-blue-400" />
+                  <span>Custom Risk Mode</span>
+                </div>
+                <p className="text-[10px] text-[#94a3b8] font-normal">
+                  Strictly enforces your custom lot sizes, ATR multipliers, fixed pips, and whitelist filters.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSettings((s) => ({ ...s, botMode: 'OFF' }))}
+                className={`p-3 rounded-lg border text-left transition-colors ${
+                  settings.botMode === 'OFF'
+                    ? 'bg-slate-800 border-slate-600 text-white font-bold'
+                    : 'bg-[#0f121a] border-[#1e2330] text-[#64748b] hover:bg-[#1a1f2c]'
+                }`}
+              >
+                <div className="font-bold text-xs mb-1">Manual Trading Only</div>
+                <p className="text-[10px] text-[#64748b] font-normal">
+                  Automated execution paused. Market watch and manual orders only.
+                </p>
+              </button>
             </div>
           </div>
 
-          {/* Master Execution Switch */}
-          <div className="flex items-center justify-between p-3.5 bg-[#151924] rounded-lg border border-[#232938]">
+          {/* Execution Mode (Auto vs Manual Confirm) */}
+          <div className="bg-[#151924] p-3.5 rounded-lg border border-[#232938] flex flex-col sm:flex-row items-center justify-between gap-3">
             <div>
-              <span className="font-bold text-slate-100 block">MT5 Auto-Trading Master Switch</span>
+              <span className="font-bold text-slate-100 block">Trade Execution Mode</span>
               <span className="text-[11px] text-[#94a3b8]">
-                When enabled, high-conviction signals automatically trigger instant market orders
+                Choose whether signals dispatch instantly or require 1-click confirmation
               </span>
             </div>
 
-            <button
-              onClick={() => setSettings((s) => ({ ...s, autoTradingEnabled: !s.autoTradingEnabled }))}
-              className={`px-4 py-1.5 rounded-lg font-bold font-mono text-xs transition-colors ${
-                settings.autoTradingEnabled
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                  : 'bg-red-600 hover:bg-red-500 text-white'
-              }`}
-            >
-              {settings.autoTradingEnabled ? 'ENABLED (ON)' : 'DISABLED (OFF)'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSettings((s) => ({ ...s, executionMode: 'AUTOMATIC' }))}
+                className={`px-3 py-1.5 rounded text-xs font-mono font-bold border ${
+                  settings.executionMode === 'AUTOMATIC'
+                    ? 'bg-emerald-950 border-emerald-500 text-emerald-300'
+                    : 'bg-[#0f121a] border-[#1e2330] text-[#94a3b8]'
+                }`}
+              >
+                Auto Execute
+              </button>
+              <button
+                type="button"
+                onClick={() => setSettings((s) => ({ ...s, executionMode: 'MANUAL_CONFIRM' }))}
+                className={`px-3 py-1.5 rounded text-xs font-mono font-bold border ${
+                  settings.executionMode === 'MANUAL_CONFIRM'
+                    ? 'bg-amber-950 border-amber-500 text-amber-300'
+                    : 'bg-[#0f121a] border-[#1e2330] text-[#94a3b8]'
+                }`}
+              >
+                Manual Confirm (1-Click)
+              </button>
+            </div>
           </div>
 
-          {/* Sizing & Risk Controls */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Position Sizing Mode */}
-            <div className="bg-[#151924] p-3.5 rounded-lg border border-[#232938] space-y-3">
-              <span className="font-bold text-slate-100 block">Position Sizing Protocol</span>
+          {/* Sizing & Risk Controls (Custom Risk Mode) */}
+          {settings.botMode === 'MANUAL_RISK' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-[#151924] p-3.5 rounded-lg border border-[#232938] space-y-3">
+                <span className="font-bold text-slate-100 block">Position Sizing Protocol</span>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSettings((s) => ({ ...s, riskMode: 'PERCENT_EQUITY' }))}
-                  className={`flex-1 py-1.5 rounded text-xs font-medium border ${
-                    settings.riskMode === 'PERCENT_EQUITY'
-                      ? 'bg-blue-950 border-blue-500 text-blue-300 font-bold'
-                      : 'bg-[#0f121a] border-[#1e2330] text-[#94a3b8]'
-                  }`}
-                >
-                  % Equity Risk (Recommended)
-                </button>
-                <button
-                  onClick={() => setSettings((s) => ({ ...s, riskMode: 'FIXED_LOT' }))}
-                  className={`flex-1 py-1.5 rounded text-xs font-medium border ${
-                    settings.riskMode === 'FIXED_LOT'
-                      ? 'bg-blue-950 border-blue-500 text-blue-300 font-bold'
-                      : 'bg-[#0f121a] border-[#1e2330] text-[#94a3b8]'
-                  }`}
-                >
-                  Fixed Lot Size
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSettings((s) => ({ ...s, riskMode: 'PERCENT_EQUITY' }))}
+                    className={`flex-1 py-1 rounded text-xs font-medium border ${
+                      settings.riskMode === 'PERCENT_EQUITY'
+                        ? 'bg-blue-950 border-blue-500 text-blue-300 font-bold'
+                        : 'bg-[#0f121a] border-[#1e2330] text-[#94a3b8]'
+                    }`}
+                  >
+                    % Equity Risk
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSettings((s) => ({ ...s, riskMode: 'FIXED_LOT' }))}
+                    className={`flex-1 py-1 rounded text-xs font-medium border ${
+                      settings.riskMode === 'FIXED_LOT'
+                        ? 'bg-blue-950 border-blue-500 text-blue-300 font-bold'
+                        : 'bg-[#0f121a] border-[#1e2330] text-[#94a3b8]'
+                    }`}
+                  >
+                    Fixed Lot
+                  </button>
+                </div>
+
+                {settings.riskMode === 'PERCENT_EQUITY' ? (
+                  <div>
+                    <div className="flex justify-between text-[11px] mb-1 font-mono">
+                      <span className="text-[#94a3b8]">Max Risk Per Trade:</span>
+                      <strong className="text-amber-400">{settings.riskPercent}%</strong>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="5.0"
+                      step="0.25"
+                      value={settings.riskPercent}
+                      onChange={(e) => setSettings((s) => ({ ...s, riskPercent: parseFloat(e.target.value) }))}
+                      className="w-full accent-blue-500"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex justify-between text-[11px] mb-1 font-mono">
+                      <span className="text-[#94a3b8]">Fixed Order Lots:</span>
+                      <strong className="text-amber-400">{settings.fixedLotSize.toFixed(2)} Lots</strong>
+                    </div>
+                    <input
+                      type="number"
+                      min="0.01"
+                      max="10.0"
+                      step="0.05"
+                      value={settings.fixedLotSize}
+                      onChange={(e) => setSettings((s) => ({ ...s, fixedLotSize: parseFloat(e.target.value) || 0.01 }))}
+                      className="w-full bg-[#0d0f15] border border-[#232938] px-2.5 py-1.5 rounded text-white font-mono text-xs focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                )}
               </div>
 
-              {settings.riskMode === 'PERCENT_EQUITY' ? (
+              <div className="bg-[#151924] p-3.5 rounded-lg border border-[#232938] space-y-3">
+                <span className="font-bold text-slate-100 block">SL & Take Profit Targets</span>
+
                 <div>
                   <div className="flex justify-between text-[11px] mb-1 font-mono">
-                    <span className="text-[#94a3b8]">Max Risk Per Trade:</span>
-                    <strong className="text-amber-400">{settings.riskPercent}%</strong>
+                    <span className="text-[#94a3b8]">Dynamic Stop Loss (ATR):</span>
+                    <strong className="text-red-400">{settings.atrMultiplier}x ATR</strong>
                   </div>
                   <input
                     type="range"
-                    min="0.5"
-                    max="5.0"
+                    min="1.0"
+                    max="3.0"
                     step="0.25"
-                    value={settings.riskPercent}
-                    onChange={(e) => setSettings((s) => ({ ...s, riskPercent: parseFloat(e.target.value) }))}
-                    className="w-full accent-blue-500"
+                    value={settings.atrMultiplier}
+                    onChange={(e) => setSettings((s) => ({ ...s, atrMultiplier: parseFloat(e.target.value) }))}
+                    className="w-full accent-red-500"
                   />
-                  <span className="text-[10px] text-[#64748b]">
-                    Lots are dynamically calculated from distance to Stop Loss.
-                  </span>
                 </div>
-              ) : (
+
                 <div>
                   <div className="flex justify-between text-[11px] mb-1 font-mono">
-                    <span className="text-[#94a3b8]">Fixed Order Lots:</span>
-                    <strong className="text-amber-400">{settings.fixedLotSize.toFixed(2)} Lots</strong>
+                    <span className="text-[#94a3b8]">Target Risk-Reward Ratio:</span>
+                    <strong className="text-emerald-400">1:{settings.takeProfitRatio}</strong>
                   </div>
-                  <input
-                    type="number"
-                    min="0.01"
-                    max="10.0"
-                    step="0.05"
-                    value={settings.fixedLotSize}
-                    onChange={(e) => setSettings((s) => ({ ...s, fixedLotSize: parseFloat(e.target.value) || 0.01 }))}
-                    className="w-full bg-[#0d0f15] border border-[#232938] px-2.5 py-1.5 rounded text-white font-mono text-xs focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Stop Loss & Take Profit Target */}
-            <div className="bg-[#151924] p-3.5 rounded-lg border border-[#232938] space-y-3">
-              <span className="font-bold text-slate-100 block">SL & Take Profit Protocol</span>
-
-              <div>
-                <div className="flex justify-between text-[11px] mb-1 font-mono">
-                  <span className="text-[#94a3b8]">Dynamic Stop Loss (ATR Multiplier):</span>
-                  <strong className="text-red-400">{settings.atrMultiplier}x ATR</strong>
-                </div>
-                <input
-                  type="range"
-                  min="1.0"
-                  max="3.0"
-                  step="0.25"
-                  value={settings.atrMultiplier}
-                  onChange={(e) => setSettings((s) => ({ ...s, atrMultiplier: parseFloat(e.target.value) }))}
-                  className="w-full accent-red-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between text-[11px] mb-1 font-mono">
-                  <span className="text-[#94a3b8]">Target Risk-Reward Ratio:</span>
-                  <strong className="text-emerald-400">1:{settings.takeProfitRatio}</strong>
-                </div>
-                <div className="grid grid-cols-4 gap-1.5 font-mono text-[11px]">
-                  {[1.5, 2.0, 2.5, 3.0].map((rr) => (
-                    <button
-                      key={rr}
-                      onClick={() => setSettings((s) => ({ ...s, takeProfitRatio: rr }))}
-                      className={`py-1 rounded border ${
-                        settings.takeProfitRatio === rr
-                          ? 'bg-emerald-950 border-emerald-500 text-emerald-300 font-bold'
-                          : 'bg-[#0f121a] border-[#1e2330] text-[#94a3b8]'
-                      }`}
-                    >
-                      1:{rr}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Trailing Stop Settings */}
-          <div className="bg-[#151924] p-3.5 rounded-lg border border-[#232938] space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="font-bold text-slate-100 block">Dynamic Trailing Stop Loss</span>
-                <span className="text-[11px] text-[#94a3b8]">
-                  Locks in profits by automatically sliding SL in the trade direction as price moves favorably
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={settings.trailingStop}
-                onChange={(e) => setSettings((s) => ({ ...s, trailingStop: e.target.checked }))}
-                className="w-4 h-4 rounded text-blue-600 focus:ring-0"
-              />
-            </div>
-
-            {settings.trailingStop && (
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#1e2330] font-mono">
-                <div>
-                  <span className="text-[10px] text-[#64748b] block mb-1">ACTIVATION DISTANCE</span>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min="5"
-                      max="100"
-                      value={settings.trailingActivationPips}
-                      onChange={(e) =>
-                        setSettings((s) => ({ ...s, trailingActivationPips: parseInt(e.target.value) || 10 }))
-                      }
-                      className="w-20 bg-[#0d0f15] border border-[#232938] px-2 py-1 rounded text-white"
-                    />
-                    <span className="text-[#94a3b8]">pips profit</span>
-                  </div>
-                </div>
-
-                <div>
-                  <span className="text-[10px] text-[#64748b] block mb-1">TRAILING STEP DISTANCE</span>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min="5"
-                      max="50"
-                      value={settings.trailingStepPips}
-                      onChange={(e) =>
-                        setSettings((s) => ({ ...s, trailingStepPips: parseInt(e.target.value) || 10 }))
-                      }
-                      className="w-20 bg-[#0d0f15] border border-[#232938] px-2 py-1 rounded text-white"
-                    />
-                    <span className="text-[#94a3b8]">pips step</span>
+                  <div className="grid grid-cols-4 gap-1.5 font-mono text-[11px]">
+                    {[1.5, 2.0, 2.5, 3.0].map((rr) => (
+                      <button
+                        key={rr}
+                        type="button"
+                        onClick={() => setSettings((s) => ({ ...s, takeProfitRatio: rr }))}
+                        className={`py-1 rounded border ${
+                          settings.takeProfitRatio === rr
+                            ? 'bg-emerald-950 border-emerald-500 text-emerald-300 font-bold'
+                            : 'bg-[#0f121a] border-[#1e2330] text-[#94a3b8]'
+                        }`}
+                      >
+                        1:{rr}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
-            )}
-          </div>
-
-          {/* Circuit Breakers & Asset Filter */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Drawdown breaker */}
-            <div className="bg-[#151924] p-3.5 rounded-lg border border-[#232938] space-y-2">
-              <span className="font-bold text-slate-100 block">Daily Drawdown Circuit Breaker</span>
-              <p className="text-[11px] text-[#94a3b8]">
-                Auto-pauses bot if session equity drawdown reaches threshold
-              </p>
-              <div className="flex items-center gap-2 font-mono">
-                <input
-                  type="number"
-                  min="2"
-                  max="15"
-                  value={settings.maxDailyDrawdownPercent}
-                  onChange={(e) =>
-                    setSettings((s) => ({ ...s, maxDailyDrawdownPercent: parseFloat(e.target.value) || 5 }))
-                  }
-                  className="w-16 bg-[#0d0f15] border border-[#232938] px-2 py-1 rounded text-red-400 font-bold"
-                />
-                <span className="text-slate-300">% max equity drop</span>
-              </div>
             </div>
+          )}
 
-            {/* Max concurrent positions */}
-            <div className="bg-[#151924] p-3.5 rounded-lg border border-[#232938] space-y-2">
-              <span className="font-bold text-slate-100 block">Max Concurrent Open Positions</span>
-              <p className="text-[11px] text-[#94a3b8]">
-                Caps exposure to prevent margin exhaustion across pairs
-              </p>
-              <div className="flex items-center gap-2 font-mono">
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={settings.maxOpenPositions}
-                  onChange={(e) =>
-                    setSettings((s) => ({ ...s, maxOpenPositions: parseInt(e.target.value) || 4 }))
-                  }
-                  className="w-16 bg-[#0d0f15] border border-[#232938] px-2 py-1 rounded text-amber-400 font-bold"
-                />
-                <span className="text-slate-300">positions maximum</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Active Asset Whitelist */}
+          {/* Asset Whitelist across 22 Markets */}
           <div className="bg-[#151924] p-3.5 rounded-lg border border-[#232938]">
-            <span className="font-bold text-slate-100 block mb-2">Automated Trading Asset Whitelist</span>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {Object.values(SUPPORTED_SYMBOLS).map((item) => {
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-bold text-slate-100 block">22-Market Asset Whitelist</span>
+              <div className="flex items-center gap-1 text-[10px]">
+                {['ALL', 'Commodities', 'Crypto', 'Forex', 'Indices'].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCategoryFilter(c)}
+                    className={`px-2 py-0.5 rounded ${
+                      categoryFilter === c ? 'bg-[#2a3245] text-white font-bold' : 'text-[#64748b]'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
+              {symbolsList.map((item) => {
                 const isActive = settings.activeSymbols[item.symbol] !== false;
                 const isGold = item.symbol === 'XAUUSD';
 
                 return (
                   <label
                     key={item.symbol}
-                    className={`flex items-center gap-2 p-2 rounded border cursor-pointer font-mono text-xs ${
+                    className={`flex items-center gap-2 p-1.5 rounded border cursor-pointer font-mono text-[11px] ${
                       isActive
                         ? isGold
                           ? 'bg-amber-950/60 border-amber-600/80 text-amber-300'
@@ -433,7 +394,7 @@ export const RiskSettingsModal: React.FC<RiskSettingsModalProps> = ({
             </div>
           </div>
 
-          {/* Portfolio Reset Section */}
+          {/* Portfolio Reset */}
           <div className="bg-[#151924] p-3.5 rounded-lg border border-[#232938] flex flex-col sm:flex-row items-center justify-between gap-3">
             <div>
               <span className="font-bold text-slate-100 block">Reset Account Portfolio</span>
@@ -455,6 +416,7 @@ export const RiskSettingsModal: React.FC<RiskSettingsModalProps> = ({
               </select>
 
               <button
+                type="button"
                 onClick={() => {
                   if (confirm(`Reset account simulation to $${resetAmount.toLocaleString()}?`)) {
                     onResetAccount(resetAmount);
@@ -469,10 +431,12 @@ export const RiskSettingsModal: React.FC<RiskSettingsModalProps> = ({
           </div>
         </div>
 
-        {/* Modal Footer */}
+        {/* Footer */}
         <div className="flex items-center justify-between px-5 py-3 bg-[#161a25] border-t border-[#232938]">
           <span className="text-[11px] text-[#64748b] font-mono">
-            Modifications apply immediately to algorithmic execution loop.
+            {settings.botMode === 'AUTONOMOUS'
+              ? 'Autonomous AI Pilot active across 22 markets.'
+              : 'Custom rule constraints active.'}
           </span>
 
           <div className="flex items-center gap-2">
@@ -492,7 +456,7 @@ export const RiskSettingsModal: React.FC<RiskSettingsModalProps> = ({
                   <span>Saved!</span>
                 </>
               ) : (
-                <span>Save Risk Settings</span>
+                <span>Save Settings</span>
               )}
             </button>
           </div>
