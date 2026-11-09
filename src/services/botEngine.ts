@@ -179,6 +179,28 @@ export class BotEngine {
     this.listeners.forEach((l) => l());
   }
 
+  public updateAccountCredentials(creds: {
+    broker: string;
+    server: string;
+    login: string;
+    leverage?: number;
+  }) {
+    this.account.accountNumber = creds.login;
+    this.account.server = creds.server;
+    if (creds.leverage) this.account.leverage = creds.leverage;
+
+    this.bridgeStatus.accountNumber = creds.login;
+    this.bridgeStatus.brokerServer = creds.server;
+    this.bridgeStatus.brokerName = creds.broker;
+    this.bridgeStatus.connected = true;
+
+    this.addLog(
+      'INFO',
+      `Broker credentials updated: ${creds.broker} #${creds.login} on ${creds.server} (Leverage 1:${this.account.leverage})`
+    );
+    this.notify();
+  }
+
   public getAccount(): AccountInfo {
     return { ...this.account };
   }

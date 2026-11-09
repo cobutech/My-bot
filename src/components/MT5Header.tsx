@@ -13,8 +13,8 @@ import {
   PlusCircle,
   Activity,
   Cpu,
-  CheckCircle,
-  AlertCircle,
+  LogIn,
+  Server,
 } from 'lucide-react';
 import { RiskSettings, AccountInfo, PythonBridgeStatus, BotOperationMode, ExecutionMode } from '../types';
 
@@ -34,6 +34,7 @@ interface MT5HeaderProps {
   onOpenRiskSettings: () => void;
   onOpenPythonBridge: () => void;
   onOpenNewOrder: () => void;
+  onOpenLoginModal: () => void;
   indicatorsConfig: {
     showEma: boolean;
     showBollinger: boolean;
@@ -59,10 +60,12 @@ export const MT5Header: React.FC<MT5HeaderProps> = ({
   onOpenRiskSettings,
   onOpenPythonBridge,
   onOpenNewOrder,
+  onOpenLoginModal,
   indicatorsConfig,
   onToggleIndicator,
 }) => {
   const [showIndicatorsMenu, setShowIndicatorsMenu] = useState(false);
+  const [showFileMenu, setShowFileMenu] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const timeframes = ['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1'];
@@ -88,8 +91,56 @@ export const MT5Header: React.FC<MT5HeaderProps> = ({
             <span className="text-[#64748b] font-normal text-[10px]">· Python ECN Bridge & QuantBot</span>
           </div>
 
-          <div className="hidden md:flex items-center gap-3 text-[#94a3b8]">
-            <span className="hover:text-slate-200 cursor-pointer">File</span>
+          <div className="hidden md:flex items-center gap-3 text-[#94a3b8] relative">
+            <div className="relative">
+              <span
+                onClick={() => setShowFileMenu(!showFileMenu)}
+                className="hover:text-slate-200 cursor-pointer"
+              >
+                File
+              </span>
+              {showFileMenu && (
+                <div
+                  className="absolute top-full left-0 mt-1 w-52 bg-[#181c27] border border-[#2a3245] rounded shadow-2xl py-1 z-50 text-slate-200"
+                  onMouseLeave={() => setShowFileMenu(false)}
+                >
+                  <button
+                    onClick={() => {
+                      setShowFileMenu(false);
+                      onOpenNewOrder();
+                    }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-[#232938] flex items-center justify-between"
+                  >
+                    <span>New Order...</span>
+                    <span className="text-[10px] text-[#64748b] font-mono">F9</span>
+                  </button>
+                  <div className="h-[1px] bg-[#232938] my-1" />
+                  <button
+                    onClick={() => {
+                      setShowFileMenu(false);
+                      onOpenLoginModal();
+                    }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-[#232938] flex items-center justify-between text-blue-400 font-bold"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <LogIn className="w-3.5 h-3.5" />
+                      <span>Login to Trade Account...</span>
+                    </span>
+                    <span className="text-[10px] text-[#64748b] font-mono">Ctrl+L</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowFileMenu(false);
+                      onOpenPythonBridge();
+                    }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-[#232938] flex items-center gap-1.5 text-purple-300"
+                  >
+                    <Cpu className="w-3.5 h-3.5" />
+                    <span>Python Bridge Worker...</span>
+                  </button>
+                </div>
+              )}
+            </div>
             <span className="hover:text-slate-200 cursor-pointer">View</span>
             <span className="hover:text-slate-200 cursor-pointer">Insert</span>
             <span className="hover:text-slate-200 cursor-pointer">Charts</span>
@@ -99,8 +150,21 @@ export const MT5Header: React.FC<MT5HeaderProps> = ({
           </div>
         </div>
 
-        {/* Python Bridge Telemetry Pill & Account Info */}
+        {/* Account Info & Login Action Button */}
         <div className="flex items-center gap-2.5 font-mono text-[11px] tabular-nums">
+          {/* Clickable Account / Broker Login Pill */}
+          <button
+            onClick={onOpenLoginModal}
+            className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-blue-950/80 border border-blue-700/80 text-blue-300 hover:bg-blue-900 transition-colors"
+            title="Click to submit or change MT5 broker login credentials"
+          >
+            <Server className="w-3 h-3 text-blue-400" />
+            <span>Login:</span>
+            <strong className="text-white">#{account.accountNumber}</strong>
+            <span className="text-slate-400 hidden sm:inline">({bridgeStatus.brokerServer})</span>
+            <span className="text-[9px] bg-blue-800 text-white px-1 rounded ml-1">Change</span>
+          </button>
+
           {/* Python MT5 Bridge Status Pill */}
           <button
             onClick={onOpenPythonBridge}
@@ -109,17 +173,9 @@ export const MT5Header: React.FC<MT5HeaderProps> = ({
           >
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <Cpu className="w-3 h-3 text-purple-400" />
-            <span className="font-bold">Python MT5: {bridgeStatus.connected ? 'Connected' : 'Standby'}</span>
+            <span className="hidden md:inline font-bold">Python MT5</span>
             <span className="text-[#94a3b8] text-[10px]">({bridgeStatus.pingMs}ms)</span>
           </button>
-
-          <span className="hidden sm:inline text-slate-300">
-            Account: <strong className="text-white">{account.accountNumber}</strong>
-          </span>
-          <span className="hidden lg:inline text-[#64748b]">·</span>
-          <span className="hidden lg:inline text-[#94a3b8]">
-            Server: <span className="text-slate-300">{account.server}</span>
-          </span>
         </div>
       </div>
 
@@ -332,7 +388,7 @@ export const MT5Header: React.FC<MT5HeaderProps> = ({
             <span>Signal Dashboard</span>
           </button>
 
-          {/* Risk Settings Button */}
+          {/* Risk Controls Button */}
           <button
             onClick={onOpenRiskSettings}
             className="flex items-center gap-1.5 px-3 py-1 bg-[#1a1f2c] hover:bg-[#242b3d] text-slate-300 border border-[#2a3245] rounded transition-colors whitespace-nowrap"

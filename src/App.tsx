@@ -7,6 +7,7 @@ import { SignalDashboardModal } from './components/SignalDashboardModal';
 import { RiskSettingsModal } from './components/RiskSettingsModal';
 import { NewOrderModal } from './components/NewOrderModal';
 import { PythonBridgeModal } from './components/PythonBridgeModal';
+import { MT5LoginModal } from './components/MT5LoginModal';
 import { AutonomousPilotBanner } from './components/AutonomousPilotBanner';
 import { marketData, SUPPORTED_SYMBOLS, Tick } from './services/marketData';
 import { botEngine } from './services/botEngine';
@@ -22,6 +23,7 @@ import {
   TradeSignal,
   BotOperationMode,
   ExecutionMode,
+  BrokerLoginCredentials,
 } from './types';
 
 function playAudioChime(type: 'ORDER_OPEN' | 'ORDER_CLOSE' | 'SIGNAL_ALERT') {
@@ -60,7 +62,7 @@ function playAudioChime(type: 'ORDER_OPEN' | 'ORDER_CLOSE' | 'SIGNAL_ALERT') {
 
 export default function App() {
   // Navigation & Viewport State
-  const [activeSymbol, setActiveSymbol] = useState<string>('XAUUSD');
+  const [activeSymbol, setActiveSymbol] = useState<string>('EURUSD');
   const [activeTimeframe, setActiveTimeframe] = useState<string>('M5');
   const [chartType, setChartType] = useState<'CANDLE' | 'BAR' | 'LINE'>('CANDLE');
 
@@ -75,7 +77,7 @@ export default function App() {
   // Real-time market state
   const [ticks, setTicks] = useState<Record<string, Tick>>(() => marketData.getAllTicks());
   const [candles, setCandles] = useState<Candle[]>(() =>
-    marketData.getCandles('XAUUSD', 'M5')
+    marketData.getCandles('EURUSD', 'M5')
   );
 
   // Bot Engine State
@@ -89,7 +91,7 @@ export default function App() {
   const [bridgeStatus, setBridgeStatus] = useState<PythonBridgeStatus>(() => botEngine.getBridgeStatus());
   const [pendingApprovals, setPendingApprovals] = useState<TradeSignal[]>(() => botEngine.getPendingApprovals());
 
-  // Quantitative Signals Map across all 22 symbols
+  // Quantitative Signals Map across all 20 symbols
   const [signals, setSignals] = useState<Record<string, TradeSignal>>({});
 
   // Modals
@@ -97,6 +99,7 @@ export default function App() {
   const [isRiskSettingsOpen, setIsRiskSettingsOpen] = useState<boolean>(false);
   const [isNewOrderOpen, setIsNewOrderOpen] = useState<boolean>(false);
   const [isPythonBridgeOpen, setIsPythonBridgeOpen] = useState<boolean>(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
 
   // Toast notifications
   const [toast, setToast] = useState<{ message: string; type: 'SUCCESS' | 'WARN' | 'INFO' } | null>(null);
@@ -145,7 +148,7 @@ export default function App() {
     setCandles(marketData.getCandles(activeSymbol, activeTimeframe));
   }, [activeSymbol, activeTimeframe]);
 
-  // Periodic Signal generation & automated bot evaluation loop across 22 markets
+  // Periodic Signal generation & automated bot evaluation loop across 20 markets
   useEffect(() => {
     const evaluateSignals = () => {
       const newSignals: Record<string, TradeSignal> = {};
@@ -218,7 +221,7 @@ export default function App() {
     botEngine.updateRiskSettings({ botMode: mode, autoTradingEnabled: mode !== 'OFF' });
     showToast(
       mode === 'AUTONOMOUS'
-        ? 'Autonomous AI Pilot Activated (Scanning 22 Markets)'
+        ? 'Autonomous AI Pilot Activated (Scanning 20 Markets)'
         : mode === 'MANUAL_RISK'
         ? 'Custom Risk Mode Enabled'
         : 'Bot Paused (Manual Trading Only)',
@@ -291,15 +294,42 @@ export default function App() {
     }
   };
 
+  // Submit broker login credentials
+  const handleLoginSubmit = async (creds: BrokerLoginCredentials) => {
+    try {
+      const res = await fetch('/api/bridge/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(creds),
+      });
+
+      if (!res.ok) {
+        throw new Error('Login failed');
+      }
+
+      botEngine.updateAccountCredentials({
+        broker: creds.broker,
+        server: creds.server,
+        login: creds.login,
+        leverage: creds.leverage,
+      });
+
+      playAudioChime('SIGNAL_ALERT');
+      showToast(`Logged into MT5 #${creds.login} on ${creds.server}`, 'SUCCESS');
+    } catch (e) {
+      showToast('Login failed. Please check broker server and credentials.', 'WARN');
+    }
+  };
+
   const currentTick = ticks[activeSymbol] || {
     symbol: activeSymbol,
-    bid: 2736.45,
-    ask: 2736.73,
-    spread: 0.28,
+    bid: 1.0542,
+    ask: 1.05428,
+    spread: 0.00008,
     time: Date.now(),
-    change24h: 0.85,
-    high24h: 2750.0,
-    low24h: 2715.0,
+    change24h: 0.25,
+    high24h: 1.058,
+    low24h: 1.051,
     tickDirection: 'SAME',
   };
 
@@ -334,6 +364,7 @@ export default function App() {
         onOpenRiskSettings={() => setIsRiskSettingsOpen(true)}
         onOpenPythonBridge={() => setIsPythonBridgeOpen(true)}
         onOpenNewOrder={() => setIsNewOrderOpen(true)}
+        onOpenLoginModal={() => setIsLoginModalOpen(true)}
         indicatorsConfig={indicatorsConfig}
         onToggleIndicator={handleToggleIndicator}
       />
@@ -347,7 +378,7 @@ export default function App() {
         onOpenSignalDashboard={() => setIsSignalDashboardOpen(true)}
       />
 
-      {/* Main Workspace: Left Market Watch (22 markets) + Center Interactive MT5 Chart */}
+      {/* Main Workspace: Left Market Watch (20 clean symbols) + Center Interactive MT5 Chart */}
       <div className="flex-1 flex overflow-hidden">
         <MarketWatch
           activeSymbol={activeSymbol}
@@ -425,6 +456,18 @@ export default function App() {
         onClose={() => setIsPythonBridgeOpen(false)}
         bridgeStatus={bridgeStatus}
         onSimulateConnect={handleSimulateBridgeConnect}
+      />
+
+      <MT5LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        currentAccount={account}
+        bridgeStatus={bridgeStatus}
+        onLoginSubmit={handleLoginSubmit}
+        onOpenPythonBridge={() => {
+          setIsLoginModalOpen(false);
+          setIsPythonBridgeOpen(true);
+        }}
       />
     </div>
   );

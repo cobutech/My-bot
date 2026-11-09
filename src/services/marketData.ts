@@ -1,194 +1,9 @@
 import { Candle, SymbolInfo } from '../types';
 
 export const SUPPORTED_SYMBOLS: Record<string, SymbolInfo> = {
-  // Commodities & Precious Metals (4)
-  XAUUSD: {
-    symbol: 'XAUUSD',
-    name: 'Gold Spot / US Dollar',
-    assetClass: 'GOLD',
-    digits: 2,
-    pipSize: 0.1, // 1 pip = 0.10 ($10 per standard lot)
-    spreadPoints: 24,
-    minLot: 0.01,
-    maxLot: 50.0,
-    lotStep: 0.01,
-    contractSize: 100, // 100 oz
-    basePrice: 2736.45,
-    icon: '🥇',
-    category: 'Commodities',
-  },
-  XAGUSD: {
-    symbol: 'XAGUSD',
-    name: 'Silver Spot / US Dollar',
-    assetClass: 'COMMODITY',
-    digits: 3,
-    pipSize: 0.01,
-    spreadPoints: 18,
-    minLot: 0.01,
-    maxLot: 50.0,
-    lotStep: 0.01,
-    contractSize: 5000, // 5000 oz
-    basePrice: 31.85,
-    icon: '🥈',
-    category: 'Commodities',
-  },
-  USOIL: {
-    symbol: 'USOIL',
-    name: 'WTI Crude Oil',
-    assetClass: 'COMMODITY',
-    digits: 2,
-    pipSize: 0.01,
-    spreadPoints: 28,
-    minLot: 0.1,
-    maxLot: 100.0,
-    lotStep: 0.1,
-    contractSize: 1000, // 1000 barrels
-    basePrice: 71.4,
-    icon: '🛢️',
-    category: 'Commodities',
-  },
-  XPTUSD: {
-    symbol: 'XPTUSD',
-    name: 'Platinum Spot / USD',
-    assetClass: 'COMMODITY',
-    digits: 2,
-    pipSize: 0.1,
-    spreadPoints: 35,
-    minLot: 0.01,
-    maxLot: 20.0,
-    lotStep: 0.01,
-    contractSize: 100,
-    basePrice: 988.5,
-    icon: '⚪',
-    category: 'Commodities',
-  },
-
-  // Cryptocurrencies (8)
-  BTCUSDT: {
-    symbol: 'BTCUSDT',
-    name: 'Bitcoin / Tether USD',
-    assetClass: 'CRYPTO',
-    digits: 2,
-    pipSize: 1.0,
-    spreadPoints: 45,
-    minLot: 0.01,
-    maxLot: 100.0,
-    lotStep: 0.01,
-    contractSize: 1,
-    basePrice: 94820.0,
-    icon: '₿',
-    category: 'Crypto',
-  },
-  ETHUSDT: {
-    symbol: 'ETHUSDT',
-    name: 'Ethereum / Tether USD',
-    assetClass: 'CRYPTO',
-    digits: 2,
-    pipSize: 0.1,
-    spreadPoints: 22,
-    minLot: 0.01,
-    maxLot: 200.0,
-    lotStep: 0.01,
-    contractSize: 1,
-    basePrice: 3385.2,
-    icon: 'Ξ',
-    category: 'Crypto',
-  },
-  SOLUSDT: {
-    symbol: 'SOLUSDT',
-    name: 'Solana / Tether USD',
-    assetClass: 'CRYPTO',
-    digits: 2,
-    pipSize: 0.01,
-    spreadPoints: 15,
-    minLot: 0.1,
-    maxLot: 500.0,
-    lotStep: 0.1,
-    contractSize: 1,
-    basePrice: 192.4,
-    icon: '◎',
-    category: 'Crypto',
-  },
-  BNBUSDT: {
-    symbol: 'BNBUSDT',
-    name: 'BNB / Tether USD',
-    assetClass: 'CRYPTO',
-    digits: 2,
-    pipSize: 0.1,
-    spreadPoints: 20,
-    minLot: 0.01,
-    maxLot: 200.0,
-    lotStep: 0.01,
-    contractSize: 1,
-    basePrice: 652.8,
-    icon: '🟡',
-    category: 'Crypto',
-  },
-  XRPUSDT: {
-    symbol: 'XRPUSDT',
-    name: 'Ripple XRP / USD',
-    assetClass: 'CRYPTO',
-    digits: 4,
-    pipSize: 0.0001,
-    spreadPoints: 12,
-    minLot: 10.0,
-    maxLot: 50000.0,
-    lotStep: 10.0,
-    contractSize: 1,
-    basePrice: 2.1845,
-    icon: '✕',
-    category: 'Crypto',
-  },
-  ADAUSDT: {
-    symbol: 'ADAUSDT',
-    name: 'Cardano / USD',
-    assetClass: 'CRYPTO',
-    digits: 4,
-    pipSize: 0.0001,
-    spreadPoints: 10,
-    minLot: 10.0,
-    maxLot: 50000.0,
-    lotStep: 10.0,
-    contractSize: 1,
-    basePrice: 0.785,
-    icon: '₳',
-    category: 'Crypto',
-  },
-  DOGEUSDT: {
-    symbol: 'DOGEUSDT',
-    name: 'Dogecoin / USD',
-    assetClass: 'CRYPTO',
-    digits: 4,
-    pipSize: 0.0001,
-    spreadPoints: 8,
-    minLot: 10.0,
-    maxLot: 100000.0,
-    lotStep: 10.0,
-    contractSize: 1,
-    basePrice: 0.245,
-    icon: '🐕',
-    category: 'Crypto',
-  },
-  AVAXUSDT: {
-    symbol: 'AVAXUSDT',
-    name: 'Avalanche / USD',
-    assetClass: 'CRYPTO',
-    digits: 2,
-    pipSize: 0.01,
-    spreadPoints: 16,
-    minLot: 0.1,
-    maxLot: 1000.0,
-    lotStep: 0.1,
-    contractSize: 1,
-    basePrice: 34.2,
-    icon: '🔺',
-    category: 'Crypto',
-  },
-
-  // Forex Majors (6)
   EURUSD: {
     symbol: 'EURUSD',
-    name: 'Euro / US Dollar',
+    name: 'EUR/USD',
     assetClass: 'FOREX',
     digits: 5,
     pipSize: 0.0001,
@@ -201,24 +16,24 @@ export const SUPPORTED_SYMBOLS: Record<string, SymbolInfo> = {
     icon: '💶',
     category: 'Forex',
   },
-  GBPUSD: {
-    symbol: 'GBPUSD',
-    name: 'British Pound / US Dollar',
-    assetClass: 'FOREX',
-    digits: 5,
-    pipSize: 0.0001,
-    spreadPoints: 11,
+  XAUUSD: {
+    symbol: 'XAUUSD',
+    name: 'XAU/USD',
+    assetClass: 'GOLD',
+    digits: 2,
+    pipSize: 0.1,
+    spreadPoints: 24,
     minLot: 0.01,
     maxLot: 50.0,
     lotStep: 0.01,
-    contractSize: 100000,
-    basePrice: 1.2685,
-    icon: '💷',
-    category: 'Forex',
+    contractSize: 100,
+    basePrice: 2736.45,
+    icon: '🥇',
+    category: 'Commodities',
   },
   USDJPY: {
     symbol: 'USDJPY',
-    name: 'US Dollar / Japanese Yen',
+    name: 'USD/JPY',
     assetClass: 'FOREX',
     digits: 3,
     pipSize: 0.01,
@@ -231,9 +46,24 @@ export const SUPPORTED_SYMBOLS: Record<string, SymbolInfo> = {
     icon: '💴',
     category: 'Forex',
   },
+  GBPUSD: {
+    symbol: 'GBPUSD',
+    name: 'GBP/USD',
+    assetClass: 'FOREX',
+    digits: 5,
+    pipSize: 0.0001,
+    spreadPoints: 11,
+    minLot: 0.01,
+    maxLot: 50.0,
+    lotStep: 0.01,
+    contractSize: 100000,
+    basePrice: 1.2685,
+    icon: '💷',
+    category: 'Forex',
+  },
   AUDUSD: {
     symbol: 'AUDUSD',
-    name: 'Australian Dollar / USD',
+    name: 'AUD/USD',
     assetClass: 'FOREX',
     digits: 5,
     pipSize: 0.0001,
@@ -248,7 +78,7 @@ export const SUPPORTED_SYMBOLS: Record<string, SymbolInfo> = {
   },
   USDCAD: {
     symbol: 'USDCAD',
-    name: 'US Dollar / Canadian Dollar',
+    name: 'USD/CAD',
     assetClass: 'FOREX',
     digits: 5,
     pipSize: 0.0001,
@@ -263,7 +93,7 @@ export const SUPPORTED_SYMBOLS: Record<string, SymbolInfo> = {
   },
   USDCHF: {
     symbol: 'USDCHF',
-    name: 'US Dollar / Swiss Franc',
+    name: 'USD/CHF',
     assetClass: 'FOREX',
     digits: 5,
     pipSize: 0.0001,
@@ -276,67 +106,200 @@ export const SUPPORTED_SYMBOLS: Record<string, SymbolInfo> = {
     icon: '🇨🇭',
     category: 'Forex',
   },
-
-  // Major Global Equity Indices (4)
-  US30: {
-    symbol: 'US30',
-    name: 'Wall Street 30 (Dow Jones)',
-    assetClass: 'INDEX',
-    digits: 1,
-    pipSize: 1.0,
-    spreadPoints: 18,
-    minLot: 0.1,
-    maxLot: 100.0,
-    lotStep: 0.1,
-    contractSize: 1,
-    basePrice: 43850.0,
-    icon: '🏛️',
-    category: 'Indices',
-  },
-  NAS100: {
-    symbol: 'NAS100',
-    name: 'US Tech 100 (Nasdaq)',
-    assetClass: 'INDEX',
-    digits: 1,
-    pipSize: 1.0,
-    spreadPoints: 15,
-    minLot: 0.1,
-    maxLot: 100.0,
-    lotStep: 0.1,
-    contractSize: 1,
-    basePrice: 20950.0,
-    icon: '💻',
-    category: 'Indices',
-  },
-  SPX500: {
-    symbol: 'SPX500',
-    name: 'S&P 500 Index',
-    assetClass: 'INDEX',
-    digits: 1,
-    pipSize: 0.1,
-    spreadPoints: 10,
-    minLot: 0.1,
-    maxLot: 100.0,
-    lotStep: 0.1,
-    contractSize: 10,
-    basePrice: 5960.0,
-    icon: '📈',
-    category: 'Indices',
-  },
-  GER40: {
-    symbol: 'GER40',
-    name: 'Germany 40 (DAX)',
-    assetClass: 'INDEX',
-    digits: 1,
-    pipSize: 1.0,
+  NZDUSD: {
+    symbol: 'NZDUSD',
+    name: 'NZD/USD',
+    assetClass: 'FOREX',
+    digits: 5,
+    pipSize: 0.0001,
     spreadPoints: 12,
-    minLot: 0.1,
+    minLot: 0.01,
     maxLot: 50.0,
+    lotStep: 0.01,
+    contractSize: 100000,
+    basePrice: 0.589,
+    icon: '🇳🇿',
+    category: 'Forex',
+  },
+  EURGBP: {
+    symbol: 'EURGBP',
+    name: 'EUR/GBP',
+    assetClass: 'FOREX',
+    digits: 5,
+    pipSize: 0.0001,
+    spreadPoints: 10,
+    minLot: 0.01,
+    maxLot: 50.0,
+    lotStep: 0.01,
+    contractSize: 100000,
+    basePrice: 0.831,
+    icon: '🇪🇺',
+    category: 'Forex',
+  },
+  EURJPY: {
+    symbol: 'EURJPY',
+    name: 'EUR/JPY',
+    assetClass: 'FOREX',
+    digits: 3,
+    pipSize: 0.01,
+    spreadPoints: 11,
+    minLot: 0.01,
+    maxLot: 50.0,
+    lotStep: 0.01,
+    contractSize: 100000,
+    basePrice: 161.7,
+    icon: '🇪🇺',
+    category: 'Forex',
+  },
+  GBPJPY: {
+    symbol: 'GBPJPY',
+    name: 'GBP/JPY',
+    assetClass: 'FOREX',
+    digits: 3,
+    pipSize: 0.01,
+    spreadPoints: 16,
+    minLot: 0.01,
+    maxLot: 50.0,
+    lotStep: 0.01,
+    contractSize: 100000,
+    basePrice: 194.5,
+    icon: '🐉',
+    category: 'Forex',
+  },
+  AUDJPY: {
+    symbol: 'AUDJPY',
+    name: 'AUD/JPY',
+    assetClass: 'FOREX',
+    digits: 3,
+    pipSize: 0.01,
+    spreadPoints: 12,
+    minLot: 0.01,
+    maxLot: 50.0,
+    lotStep: 0.01,
+    contractSize: 100000,
+    basePrice: 99.4,
+    icon: '🇦🇺',
+    category: 'Forex',
+  },
+  EURAUD: {
+    symbol: 'EURAUD',
+    name: 'EUR/AUD',
+    assetClass: 'FOREX',
+    digits: 5,
+    pipSize: 0.0001,
+    spreadPoints: 14,
+    minLot: 0.01,
+    maxLot: 50.0,
+    lotStep: 0.01,
+    contractSize: 100000,
+    basePrice: 1.627,
+    icon: '🇪🇺',
+    category: 'Forex',
+  },
+  GBPCAD: {
+    symbol: 'GBPCAD',
+    name: 'GBP/CAD',
+    assetClass: 'FOREX',
+    digits: 5,
+    pipSize: 0.0001,
+    spreadPoints: 15,
+    minLot: 0.01,
+    maxLot: 50.0,
+    lotStep: 0.01,
+    contractSize: 100000,
+    basePrice: 1.778,
+    icon: '💷',
+    category: 'Forex',
+  },
+  EURCHF: {
+    symbol: 'EURCHF',
+    name: 'EUR/CHF',
+    assetClass: 'FOREX',
+    digits: 5,
+    pipSize: 0.0001,
+    spreadPoints: 12,
+    minLot: 0.01,
+    maxLot: 50.0,
+    lotStep: 0.01,
+    contractSize: 100000,
+    basePrice: 0.935,
+    icon: '🇪🇺',
+    category: 'Forex',
+  },
+  USDMXN: {
+    symbol: 'USDMXN',
+    name: 'USD/MXN',
+    assetClass: 'FOREX',
+    digits: 4,
+    pipSize: 0.0001,
+    spreadPoints: 45,
+    minLot: 0.01,
+    maxLot: 50.0,
+    lotStep: 0.01,
+    contractSize: 100000,
+    basePrice: 20.35,
+    icon: '🇲🇽',
+    category: 'Forex',
+  },
+  USDCNH: {
+    symbol: 'USDCNH',
+    name: 'USD/CNH',
+    assetClass: 'FOREX',
+    digits: 4,
+    pipSize: 0.0001,
+    spreadPoints: 20,
+    minLot: 0.01,
+    maxLot: 50.0,
+    lotStep: 0.01,
+    contractSize: 100000,
+    basePrice: 7.235,
+    icon: '🇨🇳',
+    category: 'Forex',
+  },
+  USDSGD: {
+    symbol: 'USDSGD',
+    name: 'USD/SGD',
+    assetClass: 'FOREX',
+    digits: 4,
+    pipSize: 0.0001,
+    spreadPoints: 15,
+    minLot: 0.01,
+    maxLot: 50.0,
+    lotStep: 0.01,
+    contractSize: 100000,
+    basePrice: 1.332,
+    icon: '🇸🇬',
+    category: 'Forex',
+  },
+  USDKRW: {
+    symbol: 'USDKRW',
+    name: 'USD/KRW',
+    assetClass: 'FOREX',
+    digits: 2,
+    pipSize: 1.0,
+    spreadPoints: 60,
+    minLot: 0.1,
+    maxLot: 100.0,
     lotStep: 0.1,
-    contractSize: 1,
-    basePrice: 19320.0,
-    icon: '🇩🇪',
-    category: 'Indices',
+    contractSize: 1000,
+    basePrice: 1395.5,
+    icon: '🇰🇷',
+    category: 'Forex',
+  },
+  AUDCAD: {
+    symbol: 'AUDCAD',
+    name: 'AUD/CAD',
+    assetClass: 'FOREX',
+    digits: 5,
+    pipSize: 0.0001,
+    spreadPoints: 11,
+    minLot: 0.01,
+    maxLot: 50.0,
+    lotStep: 0.01,
+    contractSize: 100000,
+    basePrice: 0.9085,
+    icon: '🇦🇺',
+    category: 'Forex',
   },
 };
 
@@ -372,28 +335,27 @@ export function generateHistoricalCandles(
 ): Candle[] {
   const symInfo = SUPPORTED_SYMBOLS[symbol] || SUPPORTED_SYMBOLS.XAUUSD;
   const base = symInfo.basePrice;
-  const isIndex = symInfo.category === 'Indices';
-  const isForex = symInfo.category === 'Forex';
-  const isCrypto = symInfo.category === 'Crypto';
+  const isGold = symbol === 'XAUUSD';
+  const isEmerging = ['USDMXN', 'USDCNH', 'USDSGD', 'USDKRW'].includes(symbol);
 
-  const volatility = isForex ? 0.0006 : isIndex ? 0.0012 : isCrypto ? 0.0025 : 0.0016;
+  const volatility = isGold ? 0.0018 : isEmerging ? 0.0012 : 0.0007;
   const intervalMs = timeframeMinutes * 60 * 1000;
   const now = Date.now();
   const startTime = now - count * intervalMs;
 
   const candles: Candle[] = [];
-  let prevClose = base * (1 - (Math.random() * 0.02 - 0.01));
+  let prevClose = base * (1 - (Math.random() * 0.015 - 0.0075));
 
   for (let i = 0; i < count; i++) {
     const time = startTime + i * intervalMs;
     const change = prevClose * (Math.random() * 2 - 0.99) * volatility;
     const open = prevClose;
     const close = Number((open + change).toFixed(symInfo.digits));
-    const wickHigh = Math.abs(Math.random() * volatility * prevClose * 1.4);
-    const wickLow = Math.abs(Math.random() * volatility * prevClose * 1.4);
+    const wickHigh = Math.abs(Math.random() * volatility * prevClose * 1.3);
+    const wickLow = Math.abs(Math.random() * volatility * prevClose * 1.3);
     const high = Number((Math.max(open, close) + wickHigh).toFixed(symInfo.digits));
     const low = Number((Math.min(open, close) - wickLow).toFixed(symInfo.digits));
-    const volume = Math.floor(Math.random() * 350 + 40);
+    const volume = Math.floor(Math.random() * 300 + 35);
 
     candles.push({ time, open, high, low, close, volume });
     prevClose = close;
@@ -435,9 +397,9 @@ class MarketDataService {
         ask,
         spread: Number(spreadVal.toFixed(info.digits)),
         time: Date.now(),
-        change24h: Number((Math.random() * 3.2 - 1.1).toFixed(2)),
-        high24h: Number((bid * 1.015).toFixed(info.digits)),
-        low24h: Number((bid * 0.985).toFixed(info.digits)),
+        change24h: Number((Math.random() * 2.8 - 1.2).toFixed(2)),
+        high24h: Number((bid * 1.012).toFixed(info.digits)),
+        low24h: Number((bid * 0.988).toFixed(info.digits)),
         tickDirection: 'SAME',
       };
     }
@@ -491,16 +453,16 @@ class MarketDataService {
   private startStreaming() {
     if (this.intervalId) clearInterval(this.intervalId);
 
-    // Multi-symbol high frequency tick wave every 600ms
+    // Tick pulse every 550ms
     this.intervalId = setInterval(() => {
       this.simulateTickWave();
-    }, 600);
+    }, 550);
   }
 
   private simulateTickWave() {
     const symbols = Object.keys(SUPPORTED_SYMBOLS);
 
-    // Update 2-4 symbols per tick pulse for lively market feeling across the 22 markets
+    // Update 2-4 symbols per tick pulse
     const countToUpdate = Math.floor(Math.random() * 3) + 2;
     for (let c = 0; c < countToUpdate; c++) {
       const sym = symbols[Math.floor(Math.random() * symbols.length)];
@@ -509,12 +471,11 @@ class MarketDataService {
       if (!prevTick) continue;
 
       let step = 0;
-      if (sym.includes('XAU')) step = (Math.random() * 2 - 0.98) * 0.18;
-      else if (sym.includes('BTC')) step = (Math.random() * 2 - 0.98) * 5.2;
-      else if (sym.includes('ETH')) step = (Math.random() * 2 - 0.98) * 0.45;
-      else if (info.category === 'Indices') step = (Math.random() * 2 - 0.98) * 1.5;
-      else if (info.category === 'Forex') step = (Math.random() * 2 - 0.98) * 0.00015;
-      else step = (Math.random() * 2 - 0.98) * 0.05;
+      if (sym === 'XAUUSD') step = (Math.random() * 2 - 0.98) * 0.2;
+      else if (sym === 'USDKRW') step = (Math.random() * 2 - 0.98) * 0.8;
+      else if (sym === 'GBPJPY' || sym === 'EURJPY' || sym === 'USDJPY') step = (Math.random() * 2 - 0.98) * 0.02;
+      else if (sym === 'USDMXN' || sym === 'USDCNH') step = (Math.random() * 2 - 0.98) * 0.0015;
+      else step = (Math.random() * 2 - 0.98) * 0.00012;
 
       const newBid = Number(Math.max(0.0001, prevTick.bid + step).toFixed(info.digits));
       const spreadVal = info.spreadPoints * (info.digits >= 4 ? 0.0001 : info.digits === 3 ? 0.001 : 0.01);
@@ -534,7 +495,6 @@ class MarketDataService {
 
       this.ticksMap[sym] = updatedTick;
 
-      // Update current candle across active timeframes
       for (const tf of TIMEFRAMES) {
         const candles = this.candlesMap[sym]?.[tf.label];
         if (candles && candles.length > 0) {

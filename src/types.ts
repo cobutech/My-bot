@@ -131,11 +131,22 @@ export interface RiskSettings {
   activeSymbols: Record<string, boolean>;
 }
 
+export interface BrokerLoginCredentials {
+  broker: string;
+  server: string;
+  login: string;
+  password?: string;
+  accountType: 'HEDGING' | 'NETTING';
+  environment: 'DEMO' | 'REAL';
+  leverage: number;
+}
+
 export interface PythonBridgeStatus {
   connected: boolean;
   mode: 'PYTHON_MT5' | 'EMULATED_BRIDGE';
   accountNumber: string;
   brokerServer: string;
+  brokerName?: string;
   balance: number;
   equity: number;
   pingMs: number;
